@@ -1,0 +1,286 @@
+import { GitStoryData, Language, Repository, ContributionBreakdown, CommunityStats, ProductivityData } from "../types";
+import { MOCK_DATA } from "../constants";
+
+const GITHUB_API_BASE = "https://api.github.com";
+// Third-party API to get contribution graph
+const CONTRIB_API = "https://github-contributions-api.jogruber.de/v4";
+
+// Helper to determine time of day persona
+const getProductivityTime = (hour: number) => {
+  if (hour >= 5 && hour < 12) return "Morning";
+  if (hour >= 12 && hour < 17) return "Afternoon";
+  if (hour >= 17 && hour < 22) return "Evening";
+  return "Late Night";
+};
+
+// --- SOPHISTICATED ARCHETYPE LOGIC ---
+// Now focused on BEHAVIOR, not Languages.
+const calculateArchetype = (
+    stats: ContributionBreakdown,
+    community: CommunityStats,
+    totalCommits: number,
+    productivity: ProductivityData,
+    weekdayStats: number[]
+): string => {
+    const totalActivity = stats.commits + stats.prs + stats.issues + stats.reviews;
+    const prRatio = totalActivity > 0 ? stats.prs / totalActivity : 0;
+    const reviewRatio = totalActivity > 0 ? stats.reviews / totalActivity : 0;
+    const issueRatio = totalActivity > 0 ? stats.issues / totalActivity : 0;
+
+    // Calc Weekend Ratio
+    const weekendCommits = weekdayStats[0] + weekdayStats[6]; // Sun + Sat
+    const weekendRatio = totalCommits > 0 ? weekendCommits / totalCommits : 0;
+
+    // 1. "The Pull Request Pro" - Opens a lot of PRs
+    if (prRatio > 0.20 && stats.prs > 20) {
+        return "The Pull Request Pro";
+    }
+
+    // 2. "The Reviewer" - Does a lot of Code Reviews
+    if (reviewRatio > 0.10 && stats.reviews > 10) {
+        return "The Reviewer";
+    }
+
+    // 3. "The Weekend Warrior" - Codes mostly on weekends
+    if (weekendRatio > 0.35 && totalCommits > 50) {
+        return "The Weekend Warrior";
+    }
+
+    // 4. "The Night Owl" - Late night activity
+    if (productivity.timeOfDay === "Late Night" && totalCommits > 50) {
+        return "The Night Owl";
+    }
+
+    // 5. "The Early Bird" - Morning activity
+    if (productivity.timeOfDay === "Morning" && totalCommits > 50) {
+        return "The Early Bird";
+    }
+
+    // 6. "The Grid Painter" - Massive volume
+    if (totalCommits > 1200) {
+        return "The Grid Painter";
+    }
+
+    // 7. "The Consistent" - Consistent, decent volume (inspired by 'consistenter')
+    if (totalCommits > 400) {
+        return "The Consistent";
+    }
+
+    // 8. "The Planner" - High issues relative to commits
+    if (issueRatio > 0.15) {
+        return "The Planner";
+    }
+
+    // 9. "The Community Star" - Famous
+    if (community.followers > 500 || community.totalStars > 1000) {
+        return "The Community Star";
+    }
+
+    // Default
+    return "The Tinkerer";
+};
+
+export const fetchUserStory = async (username: string): Promise<GitStoryData> => {
+  if (username.toLowerCase() === 'demo') {
+      return new Promise((resolve) => setTimeout(() => resolve(MOCK_DATA), 1500));
+  }
+
+  try {
+    // 1. Fetch Basic User Info
+    const userRes = await fetch(`${GITHUB_API_BASE}/users/${username}`);
+    
+    if (userRes.status === 404) {
+        throw new Error(`User "${username}" not found.`);
+    }
+    if (userRes.status === 403) {
+        throw new Error("API Rate Limit Exceeded. Try searching 'demo' to see the experience.");
+    }
+    if (!userRes.ok) {
+        throw new Error("Failed to fetch user data.");
+    }
+    
+    const user = await userRes.json();
+
+    // 2. Fetch Repositories (Public, up to 100, sorted by updated)
+    const reposRes = await fetch(`${GITHUB_API_BASE}/users/${username}/repos?per_page=100&sort=pushed&type=all`);
+    let repos: any[] = [];
+    if (reposRes.ok) {
+        repos = await reposRes.json();
+    } else {
+        console.warn(`Failed to fetch repos: ${reposRes.status}`);
+        // Continue with empty repos to prevent crash
+    }
+
+    // 3. Fetch Contributions for 2025 (Heatmap)
+    const contribRes = await fetch(`${CONTRIB_API}/${username}?y=2025`);
+    let contribData: any = {};
+    if (contribRes.ok) {
+        contribData = await contribRes.json();
+    }
+
+    // 4. Fetch Recent Events (to estimate Breakdown)
+    // The public API only gives the last 90 days / 300 events, so we use this sample to extrapolate ratios.
+    const eventsRes = await fetch(`${GITHUB_API_BASE}/users/${username}/events?per_page=100`);
+    const events = eventsRes.ok ? await eventsRes.json() : [];
+
+    // --- Process Data ---
+
+    // A. Velocity & Commits
+    const velocityData: { date: string; commits: number }[] = [];
+    let totalCommits = 0;
+    let currentStreak = 0;
+    let maxStreak = 0;
+    const weekdayStats = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+    
+    const yearData = contribData.contributions || [];
+    yearData.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    for (const day of yearData) {
+        const count = day.count || 0;
+        totalCommits += count;
+        
+        const dateObj = new Date(day.date);
+        velocityData.push({
+            date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            commits: count
+        });
+
+        if (count > 0) weekdayStats[dateObj.getDay()] += count;
+
+        if (count > 0) {
+            currentStreak++;
+            if (currentStreak > maxStreak) maxStreak = currentStreak;
+        } else {
+            currentStreak = 0;
+        }
+    }
+
+    const days = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+    const maxDayIndex = weekdayStats.indexOf(Math.max(...weekdayStats));
+    const busiestDay = days[maxDayIndex];
+
+    // B. Analyze Events for Composition & Time
+    let eventCounts = { PushEvent: 0, PullRequestEvent: 0, IssuesEvent: 0, PullRequestReviewEvent: 0 };
+    const hourCounts: Record<number, number> = {};
+
+    if (Array.isArray(events)) {
+        events.forEach((e: any) => {
+            if (eventCounts.hasOwnProperty(e.type)) {
+                // @ts-ignore
+                eventCounts[e.type]++;
+            }
+            const date = new Date(e.created_at);
+            const h = date.getHours();
+            hourCounts[h] = (hourCounts[h] || 0) + 1;
+        });
+    }
+
+    // Extrapolate Breakdown based on Total Commits vs PushEvents
+    // If we have 10 PushEvents and 5 PR events in the sample, and 1000 total commits...
+    // We treat 'totalCommits' as the ground truth for Pushes, and scale the others relative to the sample ratio.
+    const pushSample = Math.max(eventCounts.PushEvent, 1); // Avoid div by zero
+    const ratioMultiplier = totalCommits / pushSample;
+
+    const contributionBreakdown: ContributionBreakdown = {
+        commits: totalCommits,
+        prs: Math.round(eventCounts.PullRequestEvent * ratioMultiplier) || Math.round(totalCommits * 0.05), // Fallback if no sample
+        issues: Math.round(eventCounts.IssuesEvent * ratioMultiplier) || Math.round(totalCommits * 0.02),
+        reviews: Math.round(eventCounts.PullRequestReviewEvent * ratioMultiplier) || 0,
+    };
+
+    // C. Top Languages & Community Stars
+    const langMap: Record<string, number> = {};
+    const langColors: Record<string, string> = {
+      "TypeScript": "#3178C6", "JavaScript": "#F7DF1E", "Python": "#3572A5", 
+      "Java": "#b07219", "Go": "#00ADD8", "Rust": "#dea584", "HTML": "#e34c26", 
+      "CSS": "#563d7c", "C++": "#f34b7d", "C#": "#178600", "Vue": "#41b883", "React": "#61dafb",
+      "Swift": "#F05138", "Kotlin": "#A97BFF", "Jupyter Notebook": "#DA5B0B"
+    };
+
+    let repoWithMostStars: any = null;
+    let totalStars = 0;
+
+    if (Array.isArray(repos)) {
+        repos.forEach((repo: any) => {
+          totalStars += repo.stargazers_count;
+
+          if (repo.language) {
+            langMap[repo.language] = (langMap[repo.language] || 0) + 1;
+          }
+
+          if (!repoWithMostStars || (repo.stargazers_count > repoWithMostStars.stargazers_count)) {
+            repoWithMostStars = repo;
+          }
+        });
+    }
+
+    const topLanguages: Language[] = Object.entries(langMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: repos.length > 0 ? Math.round((count / repos.length) * 100) : 0,
+        color: langColors[name] || "#A3A3A3"
+      }));
+
+    if (topLanguages.length === 0) {
+        topLanguages.push({ name: "Polyglot", count: 1, percentage: 100, color: "#FFFFFF" });
+    }
+
+    const topRepo: Repository = repoWithMostStars ? {
+      name: repoWithMostStars.name,
+      description: repoWithMostStars.description || "No description provided.",
+      stars: repoWithMostStars.stargazers_count,
+      language: repoWithMostStars.language || "Unknown",
+      topics: repoWithMostStars.topics || [],
+      url: repoWithMostStars.html_url
+    } : {
+      name: "No Public Repos",
+      description: "Start coding to write history.",
+      stars: 0,
+      language: "N/A",
+      topics: [],
+      url: ""
+    };
+
+    // D. Productivity
+    const sortedHours = Object.entries(hourCounts).sort(([,a], [,b]) => b - a);
+    let peakHour = 14; 
+    if (sortedHours.length > 0) peakHour = parseInt(sortedHours[0][0]);
+    const timeOfDay = getProductivityTime(peakHour);
+    const productivity: ProductivityData = { timeOfDay, peakHour };
+
+    // E. Community Stats
+    const communityStats: CommunityStats = {
+        followers: user.followers,
+        following: user.following,
+        publicRepos: user.public_repos,
+        totalStars: totalStars
+    };
+
+    // F. Final Archetype
+    const archetype = calculateArchetype(contributionBreakdown, communityStats, totalCommits, productivity, weekdayStats);
+
+    return {
+      username: user.login,
+      avatarUrl: user.avatar_url,
+      year: 2025,
+      totalCommits,
+      longestStreak: maxStreak,
+      busiestDay,
+      topLanguages,
+      topRepo,
+      velocityData,
+      weekdayStats,
+      productivity,
+      archetype,
+      contributionBreakdown,
+      community: communityStats
+    };
+
+  } catch (error) {
+    console.error("Error generating story:", error);
+    throw error;
+  }
+};
