@@ -96,7 +96,7 @@ const App: React.FC = () => {
 
         <div className="mt-12 text-center text-xs text-neutral-600 font-mono">
           <p>CINEMATIC EXPERIENCE</p>
-          <p className="mt-2 opacity-50">Sound Optional • Best on Mobile • Try 'demo'</p>
+          <p className="mt-2 opacity-50">Best on Mobile • Try 'demo'</p>
         </div>
       </motion.div>
     </div>

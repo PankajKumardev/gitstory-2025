@@ -16,11 +16,6 @@
   <strong>Transform your GitHub contributions into a stunning, Instagram Stories-style cinematic experience.</strong>
 </p>
 
-<br />
-
-[**🚀 Live Demo**](#) • [**📸 Screenshots**](#-slides) • [**⚡ Quick Start**](#-quick-start)
-
-<br />
 
 ---
 

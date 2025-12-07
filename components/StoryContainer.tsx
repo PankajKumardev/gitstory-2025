@@ -24,7 +24,7 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
   const [isPaused, setIsPaused] = useState(false);
   const totalSlides = 10; 
   const progressIntervalRef = useRef<number | null>(null);
-  const [progress, setProgress] = useState(0); 
+  const [progress, setProgress] = useState(0);
 
   const handleNext = useCallback(() => {
     if (currentSlide < totalSlides - 1) {
