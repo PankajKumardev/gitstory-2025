@@ -211,8 +211,62 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
       "Swift": "#F05138", "Kotlin": "#A97BFF", "Jupyter Notebook": "#DA5B0B"
     };
 
-    let repoWithMostStars: any = null;
+    let bestRepo: any = null;
+    let bestScore = -1;
     let totalStars = 0;
+
+    // Scoring function to determine the "best" project
+    const calculateRepoScore = (repo: any): number => {
+        let score = 0;
+        const now = new Date();
+        const year2025Start = new Date('2025-01-01');
+        
+        // 1. Stars contribution (logarithmic scale to prevent huge repos from dominating)
+        // Max ~30 points for stars
+        score += Math.min(Math.log10(repo.stargazers_count + 1) * 10, 30);
+        
+        // 2. Forks contribution (shows community adoption)
+        // Max ~15 points for forks
+        score += Math.min(Math.log10(repo.forks_count + 1) * 5, 15);
+        
+        // 3. Recency bonus - repos pushed in 2025 get priority
+        const pushedAt = new Date(repo.pushed_at);
+        if (pushedAt >= year2025Start) {
+            // More recent = higher score (max 25 points)
+            const daysSincePush = Math.max(0, (now.getTime() - pushedAt.getTime()) / (1000 * 60 * 60 * 24));
+            score += Math.max(0, 25 - (daysSincePush / 15)); // Decay over ~1 year
+        }
+        
+        // 4. Original work bonus (not a fork) - 15 points
+        if (!repo.fork) {
+            score += 15;
+        }
+        
+        // 5. Has description bonus - 5 points
+        if (repo.description && repo.description.trim().length > 10) {
+            score += 5;
+        }
+        
+        // 6. Has topics/tags bonus - 5 points
+        if (repo.topics && repo.topics.length > 0) {
+            score += 5;
+        }
+        
+        // 7. Has a primary language - 3 points
+        if (repo.language) {
+            score += 3;
+        }
+        
+        // 8. Watchers bonus (engagement indicator)
+        score += Math.min(repo.watchers_count * 0.5, 5);
+        
+        // 9. Penalty for archived repos
+        if (repo.archived) {
+            score -= 20;
+        }
+        
+        return score;
+    };
 
     if (Array.isArray(repos)) {
         repos.forEach((repo: any) => {
@@ -222,8 +276,11 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
             langMap[repo.language] = (langMap[repo.language] || 0) + 1;
           }
 
-          if (!repoWithMostStars || (repo.stargazers_count > repoWithMostStars.stargazers_count)) {
-            repoWithMostStars = repo;
+          // Calculate score and track best repo
+          const repoScore = calculateRepoScore(repo);
+          if (repoScore > bestScore) {
+            bestScore = repoScore;
+            bestRepo = repo;
           }
         });
     }
@@ -242,13 +299,13 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
         topLanguages.push({ name: "Polyglot", count: 1, percentage: 100, color: "#FFFFFF" });
     }
 
-    const topRepo: Repository = repoWithMostStars ? {
-      name: repoWithMostStars.name,
-      description: repoWithMostStars.description || "No description provided.",
-      stars: repoWithMostStars.stargazers_count,
-      language: repoWithMostStars.language || "Unknown",
-      topics: repoWithMostStars.topics || [],
-      url: repoWithMostStars.html_url
+    const topRepo: Repository = bestRepo ? {
+      name: bestRepo.name,
+      description: bestRepo.description || "No description provided.",
+      stars: bestRepo.stargazers_count,
+      language: bestRepo.language || "Unknown",
+      topics: bestRepo.topics || [],
+      url: bestRepo.html_url
     } : {
       name: "No Public Repos",
       description: "Start coding to write history.",
