@@ -118,10 +118,34 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
         contribData = await contribRes.json();
     }
 
-    // 4. Fetch Recent Events (to estimate Breakdown)
-    // The public API only gives the last 90 days / 300 events, so we use this sample to extrapolate ratios.
+    // 4. Fetch Recent Events (for time-of-day analysis)
     const eventsRes = await fetch(`${GITHUB_API_BASE}/users/${username}/events?per_page=100`);
     const events = eventsRes.ok ? await eventsRes.json() : [];
+
+    // 5. Fetch actual PR and Issue counts using Search API
+    // Search for PRs authored by user in 2025
+    const prSearchRes = await fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`);
+    let prCount = 0;
+    if (prSearchRes.ok) {
+        const prData = await prSearchRes.json();
+        prCount = prData.total_count || 0;
+    }
+
+    // Search for Issues authored by user in 2025
+    const issueSearchRes = await fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:issue+created:2025-01-01..2025-12-31&per_page=1`);
+    let issueCount = 0;
+    if (issueSearchRes.ok) {
+        const issueData = await issueSearchRes.json();
+        issueCount = issueData.total_count || 0;
+    }
+
+    // Search for PR reviews by user in 2025 (reviews on PRs where user is not author)
+    const reviewSearchRes = await fetch(`${GITHUB_API_BASE}/search/issues?q=reviewed-by:${username}+-author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`);
+    let reviewCount = 0;
+    if (reviewSearchRes.ok) {
+        const reviewData = await reviewSearchRes.json();
+        reviewCount = reviewData.total_count || 0;
+    }
 
     // --- Process Data ---
 
@@ -159,33 +183,23 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
     const maxDayIndex = weekdayStats.indexOf(Math.max(...weekdayStats));
     const busiestDay = days[maxDayIndex];
 
-    // B. Analyze Events for Composition & Time
-    let eventCounts = { PushEvent: 0, PullRequestEvent: 0, IssuesEvent: 0, PullRequestReviewEvent: 0 };
+    // B. Analyze Events for Time-of-day analysis only
     const hourCounts: Record<number, number> = {};
 
     if (Array.isArray(events)) {
         events.forEach((e: any) => {
-            if (eventCounts.hasOwnProperty(e.type)) {
-                // @ts-ignore
-                eventCounts[e.type]++;
-            }
             const date = new Date(e.created_at);
             const h = date.getHours();
             hourCounts[h] = (hourCounts[h] || 0) + 1;
         });
     }
 
-    // Extrapolate Breakdown based on Total Commits vs PushEvents
-    // If we have 10 PushEvents and 5 PR events in the sample, and 1000 total commits...
-    // We treat 'totalCommits' as the ground truth for Pushes, and scale the others relative to the sample ratio.
-    const pushSample = Math.max(eventCounts.PushEvent, 1); // Avoid div by zero
-    const ratioMultiplier = totalCommits / pushSample;
-
+    // Use accurate counts from Search API
     const contributionBreakdown: ContributionBreakdown = {
         commits: totalCommits,
-        prs: Math.round(eventCounts.PullRequestEvent * ratioMultiplier) || Math.round(totalCommits * 0.05), // Fallback if no sample
-        issues: Math.round(eventCounts.IssuesEvent * ratioMultiplier) || Math.round(totalCommits * 0.02),
-        reviews: Math.round(eventCounts.PullRequestReviewEvent * ratioMultiplier) || 0,
+        prs: prCount,
+        issues: issueCount,
+        reviews: reviewCount,
     };
 
     // C. Top Languages & Community Stars
