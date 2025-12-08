@@ -42,6 +42,7 @@ export interface GitStoryData {
   busiestDay: string; // e.g., "Wednesdays"
   topLanguages: Language[];
   topRepo: Repository;
+  topRepos: Repository[]; // Top 5 repos of the year
   velocityData: { date: string; commits: number }[]; // For chart
   weekdayStats: number[]; // Array of 7 numbers (Sun-Sat)
   productivity: ProductivityData;
@@ -54,11 +55,12 @@ export enum SlideType {
   TITLE = 0,
   VELOCITY = 1,
   GRID = 2,
-  COMPOSITION = 3, // New
+  COMPOSITION = 3,
   ROUTINE = 4,
   PRODUCTIVITY = 5,
-  COMMUNITY = 6, // New
+  COMMUNITY = 6,
   LANGUAGES = 7,
-  REPO = 8,
-  POSTER = 9,
+  TOP_REPOS = 8, // New slide for top 5 repos
+  REPO = 9,
+  POSTER = 10,
 }

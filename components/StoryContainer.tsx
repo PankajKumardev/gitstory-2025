@@ -10,6 +10,7 @@ import { RoutineSlide } from './slides/RoutineSlide';
 import { ProductivitySlide } from './slides/ProductivitySlide';
 import { CommunitySlide } from './slides/CommunitySlide';
 import { LanguagesSlide } from './slides/LanguagesSlide';
+import { TopReposSlide } from './slides/TopReposSlide';
 import { RepoSlide } from './slides/RepoSlide';
 import { PosterSlide } from './slides/PosterSlide';
 import { X } from 'lucide-react';
@@ -22,7 +23,7 @@ interface StoryContainerProps {
 export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const totalSlides = 10; 
+  const totalSlides = 11;
   const progressIntervalRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
 
@@ -115,6 +116,7 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
       case SlideType.PRODUCTIVITY: return <ProductivitySlide data={data} />;
       case SlideType.COMMUNITY: return <CommunitySlide data={data} />;
       case SlideType.LANGUAGES: return <LanguagesSlide data={data} />;
+      case SlideType.TOP_REPOS: return <TopReposSlide data={data} />;
       case SlideType.REPO: return <RepoSlide data={data} />;
       case SlideType.POSTER: return <PosterSlide data={data} />;
       default: return null;

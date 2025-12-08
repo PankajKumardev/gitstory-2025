@@ -80,67 +80,163 @@ const calculateArchetype = (
     return "The Tinkerer";
 };
 
-export const fetchUserStory = async (username: string): Promise<GitStoryData> => {
+// Fetch contributions using GitHub GraphQL API (includes private contributions when authenticated)
+const fetchContributionsWithGraphQL = async (username: string, headers: HeadersInit): Promise<any> => {
+    const query = `
+        query($username: String!) {
+            user(login: $username) {
+                contributionsCollection(from: "2025-01-01T00:00:00Z", to: "2025-12-31T23:59:59Z") {
+                    contributionCalendar {
+                        totalContributions
+                        weeks {
+                            contributionDays {
+                                date
+                                contributionCount
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    `;
+
+    try {
+        const response = await fetch('https://api.github.com/graphql', {
+            method: 'POST',
+            headers: {
+                ...headers,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query, variables: { username } })
+        });
+
+        if (!response.ok) {
+            console.warn('GraphQL request failed, falling back to public API');
+            return {};
+        }
+
+        const data = await response.json();
+        
+        if (data.errors) {
+            console.warn('GraphQL errors:', data.errors);
+            return {};
+        }
+
+        // Transform GraphQL response to match the format expected by the rest of the code
+        const calendar = data.data?.user?.contributionsCollection?.contributionCalendar;
+        if (!calendar) return {};
+
+        const contributions: { date: string; count: number }[] = [];
+        calendar.weeks.forEach((week: any) => {
+            week.contributionDays.forEach((day: any) => {
+                contributions.push({
+                    date: day.date,
+                    count: day.contributionCount
+                });
+            });
+        });
+
+        return { 
+            contributions,
+            total: { "2025": calendar.totalContributions }
+        };
+    } catch (error) {
+        console.warn('Failed to fetch contributions via GraphQL:', error);
+        return {};
+    }
+};
+
+export const fetchUserStory = async (username: string, token?: string): Promise<GitStoryData> => {
   if (username.toLowerCase() === 'demo') {
       return new Promise((resolve) => setTimeout(() => resolve(MOCK_DATA), 1500));
   }
 
+  // Create headers with optional auth token
+  const headers: HeadersInit = {
+    'Accept': 'application/vnd.github.v3+json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   try {
-    // 1. Fetch Basic User Info
-    const userRes = await fetch(`${GITHUB_API_BASE}/users/${username}`);
+    // 1. Fetch Basic User Info first (needed for error handling)
+    const userRes = await fetch(`${GITHUB_API_BASE}/users/${username}`, { headers });
     
     if (userRes.status === 404) {
-        throw new Error(`User "${username}" not found.`);
+        throw new Error(`User "${username}" not found. Check the spelling and try again.`);
+    }
+    if (userRes.status === 401) {
+        throw new Error("Invalid GitHub token. Please check your token and try again.");
     }
     if (userRes.status === 403) {
-        throw new Error("API Rate Limit Exceeded. Try searching 'demo' to see the experience.");
+        const rateLimitReset = userRes.headers.get('X-RateLimit-Reset');
+        const resetTime = rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000).toLocaleTimeString() : 'soon';
+        throw new Error(`API Rate Limit Exceeded. Resets at ${resetTime}. Add a GitHub token for 5000 requests/hour.`);
     }
     if (!userRes.ok) {
-        throw new Error("Failed to fetch user data.");
+        throw new Error(`Failed to fetch user data. (Status: ${userRes.status})`);
     }
     
     const user = await userRes.json();
 
-    // 2. Fetch Repositories (Public, up to 100, sorted by updated)
-    const reposRes = await fetch(`${GITHUB_API_BASE}/users/${username}/repos?per_page=100&sort=pushed&type=all`);
+    // 2. Fire all remaining API calls in PARALLEL for speed ⚡
+    // Use GraphQL for contributions when token is provided (includes private contributions)
+    const contributionsPromise = token 
+        ? fetchContributionsWithGraphQL(username, headers)
+        : fetch(`${CONTRIB_API}/${username}?y=2025`).then(res => res.ok ? res.json() : {});
+
+    // Use authenticated endpoint for full repo access (includes org repos) when token is provided
+    const reposEndpoint = token
+        ? `${GITHUB_API_BASE}/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member&visibility=all`
+        : `${GITHUB_API_BASE}/users/${username}/repos?per_page=100&sort=pushed&type=all`;
+
+    const [
+        reposRes,
+        contribData,
+        eventsRes,
+        prSearchRes,
+        issueSearchRes,
+        reviewSearchRes
+    ] = await Promise.all([
+        // Repositories (authenticated endpoint includes org repos)
+        fetch(reposEndpoint, { headers }),
+        // Contributions (GraphQL with token for private, or 3rd party for public)
+        contributionsPromise,
+        // Recent events for time-of-day
+        fetch(`${GITHUB_API_BASE}/users/${username}/events?per_page=100`, { headers }),
+        // PRs authored in 2025
+        fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`, { headers }),
+        // Issues authored in 2025
+        fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:issue+created:2025-01-01..2025-12-31&per_page=1`, { headers }),
+        // PR reviews in 2025
+        fetch(`${GITHUB_API_BASE}/search/issues?q=reviewed-by:${username}+-author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`, { headers })
+    ]);
+
+    // Process responses
     let repos: any[] = [];
     if (reposRes.ok) {
         repos = await reposRes.json();
     } else {
         console.warn(`Failed to fetch repos: ${reposRes.status}`);
-        // Continue with empty repos to prevent crash
     }
 
-    // 3. Fetch Contributions for 2025 (Heatmap)
-    const contribRes = await fetch(`${CONTRIB_API}/${username}?y=2025`);
-    let contribData: any = {};
-    if (contribRes.ok) {
-        contribData = await contribRes.json();
-    }
+    // contribData is already resolved from Promise.all (either GraphQL or 3rd party)
 
-    // 4. Fetch Recent Events (for time-of-day analysis)
-    const eventsRes = await fetch(`${GITHUB_API_BASE}/users/${username}/events?per_page=100`);
     const events = eventsRes.ok ? await eventsRes.json() : [];
 
-    // 5. Fetch actual PR and Issue counts using Search API
-    // Search for PRs authored by user in 2025
-    const prSearchRes = await fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`);
     let prCount = 0;
     if (prSearchRes.ok) {
         const prData = await prSearchRes.json();
         prCount = prData.total_count || 0;
     }
 
-    // Search for Issues authored by user in 2025
-    const issueSearchRes = await fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:issue+created:2025-01-01..2025-12-31&per_page=1`);
     let issueCount = 0;
     if (issueSearchRes.ok) {
         const issueData = await issueSearchRes.json();
         issueCount = issueData.total_count || 0;
     }
 
-    // Search for PR reviews by user in 2025 (reviews on PRs where user is not author)
-    const reviewSearchRes = await fetch(`${GITHUB_API_BASE}/search/issues?q=reviewed-by:${username}+-author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`);
     let reviewCount = 0;
     if (reviewSearchRes.ok) {
         const reviewData = await reviewSearchRes.json();
@@ -204,11 +300,49 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
 
     // C. Top Languages & Community Stars
     const langMap: Record<string, number> = {};
+    // Extended language color palette (50+ languages with official GitHub colors)
     const langColors: Record<string, string> = {
-      "TypeScript": "#3178C6", "JavaScript": "#F7DF1E", "Python": "#3572A5", 
-      "Java": "#b07219", "Go": "#00ADD8", "Rust": "#dea584", "HTML": "#e34c26", 
-      "CSS": "#563d7c", "C++": "#f34b7d", "C#": "#178600", "Vue": "#41b883", "React": "#61dafb",
-      "Swift": "#F05138", "Kotlin": "#A97BFF", "Jupyter Notebook": "#DA5B0B"
+      // Web & Frontend
+      "TypeScript": "#3178C6", "JavaScript": "#F7DF1E", "HTML": "#e34c26", 
+      "CSS": "#563d7c", "Vue": "#41b883", "Svelte": "#ff3e00", "SCSS": "#c6538c",
+      "Less": "#1d365d", "Astro": "#ff5a03", "MDX": "#1b1f24",
+      
+      // Systems & Low-level
+      "Rust": "#dea584", "C": "#555555", "C++": "#f34b7d", "C#": "#178600",
+      "Go": "#00ADD8", "Zig": "#f7a41d", "Assembly": "#6E4C13", "Objective-C": "#438eff",
+      
+      // JVM & Enterprise
+      "Java": "#b07219", "Kotlin": "#A97BFF", "Scala": "#c22d40", "Groovy": "#4298b8",
+      "Clojure": "#db5855",
+      
+      // Scripting & Dynamic
+      "Python": "#3572A5", "Ruby": "#701516", "PHP": "#4F5D95", "Perl": "#0298c3",
+      "Lua": "#000080", "R": "#198CE7", "Julia": "#a270ba", "Elixir": "#6e4a7e",
+      "Erlang": "#B83998", "Haskell": "#5e5086", "OCaml": "#3be133",
+      
+      // Mobile
+      "Swift": "#F05138", "Dart": "#00B4AB", "Objective-C++": "#6866fb",
+      
+      // Data & ML
+      "Jupyter Notebook": "#DA5B0B", "MATLAB": "#e16737", "SAS": "#B34936",
+      
+      // Shell & Config
+      "Shell": "#89e051", "PowerShell": "#012456", "Dockerfile": "#384d54",
+      "Makefile": "#427819", "Nix": "#7e7eff", "HCL": "#844fba",
+      
+      // Query & Data
+      "SQL": "#e38c00", "PLpgSQL": "#336790", "TSQL": "#e38c00", "GraphQL": "#e10098",
+      
+      // Markup & Docs
+      "Markdown": "#083fa1", "TeX": "#3D6117", "Org": "#77aa99",
+      
+      // Other Popular
+      "F#": "#b845fc", "Crystal": "#000100", "Nim": "#ffc200", "V": "#4f87c4",
+      "Solidity": "#AA6746", "Move": "#4a137a", "Cairo": "#ff4c00",
+      "WASM": "#654ff0", "WebAssembly": "#654ff0", "CoffeeScript": "#244776",
+      "Elm": "#60B5CC", "PureScript": "#1D222D", "ReasonML": "#ff5847",
+      "Raku": "#0000fb", "Fortran": "#4d41b1", "COBOL": "#005ca5", "Ada": "#02f88c",
+      "D": "#ba595e", "Vala": "#a56de2", "Hack": "#878787", "ActionScript": "#882B0F"
     };
 
     let bestRepo: any = null;
@@ -265,9 +399,31 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
             score -= 20;
         }
         
+        // 10. Repo size bonus (proxy for commits/code volume)
+        // Larger repos typically have more commits and work put into them
+        // Max ~15 points for size (logarithmic scale, size is in KB)
+        if (repo.size > 0) {
+            score += Math.min(Math.log10(repo.size) * 3, 15);
+        }
+        
+        // 11. Open issues bonus (shows active development/community engagement)
+        // Max ~8 points for open issues
+        if (repo.open_issues_count > 0) {
+            score += Math.min(Math.log10(repo.open_issues_count + 1) * 4, 8);
+        }
+        
+        // 12. Created in 2025 bonus (brand new project this year!)
+        const createdAt = new Date(repo.created_at);
+        if (createdAt >= year2025Start) {
+            score += 10; // New projects deserve highlight
+        }
+        
         return score;
     };
 
+    // Score all repos and collect stats
+    const repoScores: { repo: any; score: number }[] = [];
+    
     if (Array.isArray(repos)) {
         repos.forEach((repo: any) => {
           totalStars += repo.stargazers_count;
@@ -276,14 +432,19 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
             langMap[repo.language] = (langMap[repo.language] || 0) + 1;
           }
 
-          // Calculate score and track best repo
+          // Calculate score
           const repoScore = calculateRepoScore(repo);
-          if (repoScore > bestScore) {
-            bestScore = repoScore;
-            bestRepo = repo;
-          }
+          repoScores.push({ repo, score: repoScore });
         });
     }
+
+    // Sort by score and get top 5
+    repoScores.sort((a, b) => b.score - a.score);
+    const topCandidates = repoScores.slice(0, 5);
+    
+    // Best repo is the highest scoring
+    bestRepo = topCandidates[0]?.repo || null;
+    bestScore = topCandidates[0]?.score || 0;
 
     const topLanguages: Language[] = Object.entries(langMap)
       .sort(([, a], [, b]) => b - a)
@@ -315,6 +476,16 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
       url: ""
     };
 
+    // Build top 5 repos array
+    const topRepos: Repository[] = topCandidates.slice(0, 5).map(c => ({
+      name: c.repo.name,
+      description: c.repo.description || "No description provided.",
+      stars: c.repo.stargazers_count,
+      language: c.repo.language || "Unknown",
+      topics: c.repo.topics || [],
+      url: c.repo.html_url
+    }));
+
     // D. Productivity
     const sortedHours = Object.entries(hourCounts).sort(([,a], [,b]) => b - a);
     let peakHour = 14; 
@@ -342,6 +513,7 @@ export const fetchUserStory = async (username: string): Promise<GitStoryData> =>
       busiestDay,
       topLanguages,
       topRepo,
+      topRepos,
       velocityData,
       weekdayStats,
       productivity,
