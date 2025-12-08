@@ -25,22 +25,51 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🎥 **Cinematic Experience** | 10 beautifully animated slides with Instagram Stories-like navigation |
+| 🎥 **Cinematic Experience** | 11 beautifully animated slides with Instagram Stories-like navigation |
 | 📊 **Live GitHub Data** | Real-time stats fetched from GitHub API — commits, PRs, issues, reviews |
 | 🧬 **Smart Archetypes** | AI-determined coding personas: *Night Owl*, *Weekend Warrior*, *Grid Painter*, and more |
 | 📈 **Velocity Charts** | Animated contribution charts powered by Recharts |
 | 🗓️ **Contribution Grid** | Visual heatmap of your 2025 coding activity |
-| 🏆 **Top Repository** | Showcase your most-starred project |
-| 🎨 **Language Breakdown** | Beautiful visualization of your tech stack |
+| 🏆 **Top 5 Repositories** | Showcase your best projects with smart ranking |
+| 🎨 **Language Breakdown** | Beautiful visualization of your tech stack (55+ languages!) |
 | 📱 **Mobile-First** | Touch gestures: tap left/right to navigate, hold to pause |
-| 🖼️ **Poster Export** | Download a shareable movie-poster style summary |
+| � **GitHub Token Support** | Optional authentication for private repos & org repos |
+| �🖼️ **Poster Export** | Download a shareable movie-poster style summary |
 | 🎊 **Confetti Celebration** | End your story with style |
+
+---
+
+## 🆕 What's New
+
+### Smart Repository Scoring
+Projects are now ranked using **11 factors** instead of just stars:
+- ⭐ Stars & Forks
+- 📅 Recent activity in 2025
+- ✨ Original work (not forks)
+- 📝 Description & Topics
+- 💻 Primary language
+- 📦 Repository size
+- 🐛 Open issues (activity indicator)
+- 🆕 Created in 2025 bonus
+
+### GitHub Token Integration
+- 🔐 Optional token input with validation
+- ✅ "Connected as @username" badge with avatar
+- 🏢 Access to **organization repositories**
+- 🔒 **Private contributions** via GraphQL API
+- 📈 5000 API calls/hour (vs 60 without token)
+
+### Better Error Handling
+- 🟠 Rate limit errors with reset time
+- 🟡 User not found suggestions
+- 🔴 Authentication error guidance
+- 🔄 Retry button for rate limits
 
 ---
 
 ## 🎬 Slides
 
-Experience your year through **10 cinematic slides**:
+Experience your year through **11 cinematic slides**:
 
 | # | Slide | What It Shows |
 |---|-------|---------------|
@@ -52,8 +81,9 @@ Experience your year through **10 cinematic slides**:
 | 6 | **Productivity** | Peak coding hours & time-of-day persona |
 | 7 | **Community** | Followers, stars, and repo count |
 | 8 | **Languages** | Top 3 programming languages |
-| 9 | **Top Repo** | Your most-starred repository spotlight |
-| 10 | **Poster** | 🎬 Downloadable movie poster with confetti! |
+| 9 | **Top 5 Repos** | Your best repositories ranked by score |
+| 10 | **Top Repo** | Spotlight on your #1 repository |
+| 11 | **Poster** | 🎬 Downloadable movie poster with confetti! |
 
 ---
 
@@ -80,7 +110,7 @@ Based on your **behavior patterns**, you'll be assigned one of these personas:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/gitstory-2025.git
+git clone https://github.com/PankajKumardev/gitstory-2025.git
 cd gitstory-2025
 
 # Install dependencies
@@ -90,13 +120,33 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3000** and enter any GitHub username!
+Open **http://localhost:5173** and enter any GitHub username!
 
 > 💡 **Tip:** Type `demo` to see a full experience with mock data.
 
 ---
 
-## 🛠️ Tech Stack
+## � Authentication (Optional)
+
+For enhanced features, add a GitHub Personal Access Token:
+
+1. Click **"Add GitHub Token (Optional)"** on the home page
+2. Paste your token (starts with `ghp_`)
+3. See "Connected as @username" confirmation
+
+### Benefits with Token:
+| Feature | Without Token | With Token |
+|---------|---------------|------------|
+| Rate Limit | 60/hour | **5000/hour** |
+| Private Repos | ❌ | ✅ |
+| Org Repos | ❌ | ✅ |
+| Private Contributions | ❌ | ✅ |
+
+[Create a token with correct scopes →](https://github.com/settings/tokens/new?scopes=repo,read:org,read:user&description=GitStory%202025)
+
+---
+
+## �🛠️ Tech Stack
 
 | Technology | Purpose |
 |------------|---------|
@@ -114,20 +164,30 @@ Open **http://localhost:3000** and enter any GitHub username!
 
 ## 📡 API Usage
 
-GitStory uses **unauthenticated** GitHub API calls:
+GitStory uses **7 parallel API calls** per user:
 
+| # | Endpoint | Purpose |
+|---|----------|---------|
+| 1 | `/users/{username}` | Basic profile info |
+| 2 | `/users/{username}/repos` | Repository list & languages |
+| 3 | `/users/{username}/events` | Time-of-day patterns |
+| 4 | `/search/issues?q=author:...type:pr` | PR count for 2025 |
+| 5 | `/search/issues?q=author:...type:issue` | Issue count for 2025 |
+| 6 | `/search/issues?q=reviewed-by:...` | Review count for 2025 |
+| 7 | `github-contributions-api` | Contribution heatmap |
+
+### With Token (Additional):
 | Endpoint | Purpose |
 |----------|---------|
-| `/users/{username}` | Basic profile info |
-| `/users/{username}/repos` | Repository list & languages |
-| `/users/{username}/events` | Recent activity breakdown |
-| `github-contributions-api.jogruber.de` | Contribution heatmap data |
+| `/graphql` | Private contributions |
+| `/user/repos` | Org & collaborative repos |
 
 ### Rate Limits
 
-- **60 requests/hour per IP** (unauthenticated)
-- Each user's limit is independent — your app won't get globally rate-limited
-- Graceful error handling with fallback to demo mode
+| Type | Limit |
+|------|-------|
+| Without Token | 60 requests/hour per IP |
+| With Token | **5000 requests/hour** |
 
 ---
 
@@ -149,12 +209,12 @@ gitstory-2025/
 ├── index.html          # Entry point
 ├── index.css           # Tailwind + custom styles
 ├── index.tsx           # React root
-├── App.tsx             # Main app with landing page
+├── App.tsx             # Main app with landing page & token input
 ├── types.ts            # TypeScript interfaces
 ├── constants.ts        # Mock data & configuration
 ├── vite.config.ts      # Vite configuration
 ├── services/
-│   └── githubService.ts    # GitHub API integration
+│   └── githubService.ts    # GitHub API + GraphQL integration
 └── components/
     ├── StoryContainer.tsx  # Slide navigation & gestures
     ├── SlideLayout.tsx     # Reusable slide wrapper
@@ -168,6 +228,7 @@ gitstory-2025/
         ├── ProductivitySlide.tsx
         ├── CommunitySlide.tsx
         ├── LanguagesSlide.tsx
+        ├── TopReposSlide.tsx     # NEW: Top 5 repos
         ├── RepoSlide.tsx
         └── PosterSlide.tsx
 ```
