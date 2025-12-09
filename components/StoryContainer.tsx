@@ -70,6 +70,32 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
     };
   }, [currentSlide, isPaused, handleNext]);
 
+  // Keyboard Navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'd':
+          handleNext();
+          break;
+        case 'ArrowLeft':
+        case 'a':
+          handlePrev();
+          break;
+        case ' ': // Space to pause/resume
+          e.preventDefault();
+          setIsPaused(prev => !prev);
+          break;
+        case 'Escape':
+          onComplete();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNext, handlePrev, onComplete]);
+
   // Gestures
   const touchStartX = useRef(0);
   const longPressTimer = useRef<number | null>(null);

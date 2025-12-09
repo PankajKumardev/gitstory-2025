@@ -1,87 +1,27 @@
-import { GitStoryData, Language, Repository, ContributionBreakdown, CommunityStats, ProductivityData } from "../types";
+import { GitStoryData, Language, Repository, ContributionBreakdown, CommunityStats } from "../types";
 import { MOCK_DATA } from "../constants";
+import { 
+  calculateLanguageScores, 
+  getTopLanguages, 
+  calculateRepoScore, 
+  calculateArchetype,
+  calculateProductivity 
+} from "./scoringAlgorithms";
 
 const GITHUB_API_BASE = "https://api.github.com";
 // Third-party API to get contribution graph
 const CONTRIB_API = "https://github-contributions-api.jogruber.de/v4";
 
-// Helper to determine time of day persona
-const getProductivityTime = (hour: number) => {
-  if (hour >= 5 && hour < 12) return "Morning";
-  if (hour >= 12 && hour < 17) return "Afternoon";
-  if (hour >= 17 && hour < 22) return "Evening";
-  return "Late Night";
-};
 
-// --- SOPHISTICATED ARCHETYPE LOGIC ---
-// Now focused on BEHAVIOR, not Languages.
-const calculateArchetype = (
-    stats: ContributionBreakdown,
-    community: CommunityStats,
-    totalCommits: number,
-    productivity: ProductivityData,
-    weekdayStats: number[]
-): string => {
-    const totalActivity = stats.commits + stats.prs + stats.issues + stats.reviews;
-    const prRatio = totalActivity > 0 ? stats.prs / totalActivity : 0;
-    const reviewRatio = totalActivity > 0 ? stats.reviews / totalActivity : 0;
-    const issueRatio = totalActivity > 0 ? stats.issues / totalActivity : 0;
-
-    // Calc Weekend Ratio
-    const weekendCommits = weekdayStats[0] + weekdayStats[6]; // Sun + Sat
-    const weekendRatio = totalCommits > 0 ? weekendCommits / totalCommits : 0;
-
-    // 1. "The Pull Request Pro" - Opens a lot of PRs
-    if (prRatio > 0.20 && stats.prs > 20) {
-        return "The Pull Request Pro";
-    }
-
-    // 2. "The Reviewer" - Does a lot of Code Reviews
-    if (reviewRatio > 0.10 && stats.reviews > 10) {
-        return "The Reviewer";
-    }
-
-    // 3. "The Weekend Warrior" - Codes mostly on weekends
-    if (weekendRatio > 0.35 && totalCommits > 50) {
-        return "The Weekend Warrior";
-    }
-
-    // 4. "The Night Owl" - Late night activity
-    if (productivity.timeOfDay === "Late Night" && totalCommits > 50) {
-        return "The Night Owl";
-    }
-
-    // 5. "The Early Bird" - Morning activity
-    if (productivity.timeOfDay === "Morning" && totalCommits > 50) {
-        return "The Early Bird";
-    }
-
-    // 6. "The Grid Painter" - Massive volume
-    if (totalCommits > 1200) {
-        return "The Grid Painter";
-    }
-
-    // 7. "The Consistent" - Consistent, decent volume (inspired by 'consistenter')
-    if (totalCommits > 400) {
-        return "The Consistent";
-    }
-
-    // 8. "The Planner" - High issues relative to commits
-    if (issueRatio > 0.15) {
-        return "The Planner";
-    }
-
-    // 9. "The Community Star" - Famous
-    if (community.followers > 500 || community.totalStars > 1000) {
-        return "The Community Star";
-    }
-
-    // Default
-    return "The Tinkerer";
-};
-
-// Fetch contributions using GitHub GraphQL API (includes private contributions when authenticated)
-const fetchContributionsWithGraphQL = async (username: string, headers: HeadersInit): Promise<any> => {
+// Fetch contributions + stats using GitHub GraphQL API (includes private contributions when authenticated)
+// This single call replaces: contributions API + 3 separate search API calls = saves 3 API calls!
+const fetchContributionsWithGraphQL = async (username: string, headers: HeadersInit): Promise<{
+    contributions: { date: string; count: number }[];
+    total: Record<string, number>;
+    prCount: number;
+    issueCount: number;
+    reviewCount: number;
+}> => {
     const query = `
         query($username: String!) {
             user(login: $username) {
@@ -95,6 +35,9 @@ const fetchContributionsWithGraphQL = async (username: string, headers: HeadersI
                             }
                         }
                     }
+                    totalPullRequestContributions
+                    totalIssueContributions
+                    totalPullRequestReviewContributions
                 }
             }
         }
@@ -112,19 +55,20 @@ const fetchContributionsWithGraphQL = async (username: string, headers: HeadersI
 
         if (!response.ok) {
             console.warn('GraphQL request failed, falling back to public API');
-            return {};
+            return { contributions: [], total: {}, prCount: -1, issueCount: -1, reviewCount: -1 };
         }
 
         const data = await response.json();
         
         if (data.errors) {
             console.warn('GraphQL errors:', data.errors);
-            return {};
+            return { contributions: [], total: {}, prCount: -1, issueCount: -1, reviewCount: -1 };
         }
 
         // Transform GraphQL response to match the format expected by the rest of the code
-        const calendar = data.data?.user?.contributionsCollection?.contributionCalendar;
-        if (!calendar) return {};
+        const collection = data.data?.user?.contributionsCollection;
+        const calendar = collection?.contributionCalendar;
+        if (!calendar) return { contributions: [], total: {}, prCount: -1, issueCount: -1, reviewCount: -1 };
 
         const contributions: { date: string; count: number }[] = [];
         calendar.weeks.forEach((week: any) => {
@@ -138,11 +82,14 @@ const fetchContributionsWithGraphQL = async (username: string, headers: HeadersI
 
         return { 
             contributions,
-            total: { "2025": calendar.totalContributions }
+            total: { "2025": calendar.totalContributions },
+            prCount: collection.totalPullRequestContributions || 0,
+            issueCount: collection.totalIssueContributions || 0,
+            reviewCount: collection.totalPullRequestReviewContributions || 0
         };
     } catch (error) {
         console.warn('Failed to fetch contributions via GraphQL:', error);
-        return {};
+        return { contributions: [], total: {}, prCount: -1, issueCount: -1, reviewCount: -1 };
     }
 };
 
@@ -181,10 +128,19 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     const user = await userRes.json();
 
     // 2. Fire all remaining API calls in PARALLEL for speed ⚡
+    // Define contribution data type for proper typing
+    type ContribData = {
+        contributions: { date: string; count: number }[];
+        total: Record<string, number>;
+        prCount?: number;
+        issueCount?: number;
+        reviewCount?: number;
+    };
+    
     // Use GraphQL for contributions when token is provided (includes private contributions)
-    const contributionsPromise = token 
+    const contributionsPromise: Promise<ContribData> = token 
         ? fetchContributionsWithGraphQL(username, headers)
-        : fetch(`${CONTRIB_API}/${username}?y=2025`).then(res => res.ok ? res.json() : {});
+        : fetch(`${CONTRIB_API}/${username}?y=2025`).then(res => res.ok ? res.json() : { contributions: [], total: {} });
 
     // Use authenticated endpoint for full repo access (includes org repos) when token is provided
     const reposEndpoint = token
@@ -346,80 +302,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     };
 
     let bestRepo: any = null;
-    let bestScore = -1;
     let totalStars = 0;
-
-    // Scoring function to determine the "best" project
-    const calculateRepoScore = (repo: any): number => {
-        let score = 0;
-        const now = new Date();
-        const year2025Start = new Date('2025-01-01');
-        
-        // 1. Stars contribution (logarithmic scale to prevent huge repos from dominating)
-        // Max ~30 points for stars
-        score += Math.min(Math.log10(repo.stargazers_count + 1) * 10, 30);
-        
-        // 2. Forks contribution (shows community adoption)
-        // Max ~15 points for forks
-        score += Math.min(Math.log10(repo.forks_count + 1) * 5, 15);
-        
-        // 3. Recency bonus - repos pushed in 2025 get priority
-        const pushedAt = new Date(repo.pushed_at);
-        if (pushedAt >= year2025Start) {
-            // More recent = higher score (max 25 points)
-            const daysSincePush = Math.max(0, (now.getTime() - pushedAt.getTime()) / (1000 * 60 * 60 * 24));
-            score += Math.max(0, 25 - (daysSincePush / 15)); // Decay over ~1 year
-        }
-        
-        // 4. Original work bonus (not a fork) - 15 points
-        if (!repo.fork) {
-            score += 15;
-        }
-        
-        // 5. Has description bonus - 5 points
-        if (repo.description && repo.description.trim().length > 10) {
-            score += 5;
-        }
-        
-        // 6. Has topics/tags bonus - 5 points
-        if (repo.topics && repo.topics.length > 0) {
-            score += 5;
-        }
-        
-        // 7. Has a primary language - 3 points
-        if (repo.language) {
-            score += 3;
-        }
-        
-        // 8. Watchers bonus (engagement indicator)
-        score += Math.min(repo.watchers_count * 0.5, 5);
-        
-        // 9. Penalty for archived repos
-        if (repo.archived) {
-            score -= 20;
-        }
-        
-        // 10. Repo size bonus (proxy for commits/code volume)
-        // Larger repos typically have more commits and work put into them
-        // Max ~15 points for size (logarithmic scale, size is in KB)
-        if (repo.size > 0) {
-            score += Math.min(Math.log10(repo.size) * 3, 15);
-        }
-        
-        // 11. Open issues bonus (shows active development/community engagement)
-        // Max ~8 points for open issues
-        if (repo.open_issues_count > 0) {
-            score += Math.min(Math.log10(repo.open_issues_count + 1) * 4, 8);
-        }
-        
-        // 12. Created in 2025 bonus (brand new project this year!)
-        const createdAt = new Date(repo.created_at);
-        if (createdAt >= year2025Start) {
-            score += 10; // New projects deserve highlight
-        }
-        
-        return score;
-    };
 
     // Score all repos and collect stats
     const repoScores: { repo: any; score: number }[] = [];
@@ -427,12 +310,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     if (Array.isArray(repos)) {
         repos.forEach((repo: any) => {
           totalStars += repo.stargazers_count;
-
-          if (repo.language) {
-            langMap[repo.language] = (langMap[repo.language] || 0) + 1;
-          }
-
-          // Calculate score
+          // Calculate score using modular function
           const repoScore = calculateRepoScore(repo);
           repoScores.push({ repo, score: repoScore });
         });
@@ -444,17 +322,20 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     
     // Best repo is the highest scoring
     bestRepo = topCandidates[0]?.repo || null;
-    bestScore = topCandidates[0]?.score || 0;
 
-    const topLanguages: Language[] = Object.entries(langMap)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([name, count]) => ({
-        name,
-        count,
-        percentage: repos.length > 0 ? Math.round((count / repos.length) * 100) : 0,
-        color: langColors[name] || "#A3A3A3"
-      }));
+    // Calculate language scores using modular function
+    const langScoreMap = calculateLanguageScores(repos);
+    const topLangScores = getTopLanguages(langScoreMap, 3);
+    
+    // Calculate total weight for percentages
+    const totalLangWeight = topLangScores.reduce((sum, l) => sum + l.weight, 0);
+
+    const topLanguages: Language[] = topLangScores.map(lang => ({
+        name: lang.name,
+        count: lang.repoCount,
+        percentage: totalLangWeight > 0 ? Math.round((lang.weight / totalLangWeight) * 100) : 0,
+        color: langColors[lang.name] || "#A3A3A3"
+    }));
 
     if (topLanguages.length === 0) {
         topLanguages.push({ name: "Polyglot", count: 1, percentage: 100, color: "#FFFFFF" });
@@ -487,11 +368,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     }));
 
     // D. Productivity
-    const sortedHours = Object.entries(hourCounts).sort(([,a], [,b]) => b - a);
-    let peakHour = 14; 
-    if (sortedHours.length > 0) peakHour = parseInt(sortedHours[0][0]);
-    const timeOfDay = getProductivityTime(peakHour);
-    const productivity: ProductivityData = { timeOfDay, peakHour };
+    const productivity = calculateProductivity(hourCounts);
 
     // E. Community Stats
     const communityStats: CommunityStats = {

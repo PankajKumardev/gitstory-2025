@@ -41,16 +41,28 @@
 
 ## 🆕 What's New
 
+### 🚀 Optimized API (v2.0)
+- **With Token:** Only **4 API calls** (GraphQL bundles contributions + PR/Issue/Review counts!)
+- **Without Token:** 7 API calls (REST fallback)
+- **43% fewer API calls** when authenticated!
+
 ### Smart Repository Scoring
-Projects are now ranked using **11 factors** instead of just stars:
-- ⭐ Stars & Forks
-- 📅 Recent activity in 2025
+Projects are now ranked using **12 factors** instead of just stars:
+- ⭐ Stars & Forks (logarithmic scale)
+- 📅 Recent activity in 2025 (time-decay bonus)
 - ✨ Original work (not forks)
 - 📝 Description & Topics
 - 💻 Primary language
 - 📦 Repository size
 - 🐛 Open issues (activity indicator)
 - 🆕 Created in 2025 bonus
+- 👀 Watchers
+- 📦 Archived penalty
+
+### Smart Language Scoring
+- 🚫 **Excludes forks** (your own code only)
+- 📅 **2025 activity bonus** (recent work counts more)
+- 🎯 **Diversity bonus** (3+ repos = extra weight)
 
 ### GitHub Token Integration
 - 🔐 Optional token input with validation
@@ -164,41 +176,51 @@ For enhanced features, add a GitHub Personal Access Token:
 
 ## 📡 API Usage
 
-GitStory uses **7 parallel API calls** per user:
-
+### With Token (Optimized - 4 calls)
 | # | Endpoint | Purpose |
 |---|----------|---------|
 | 1 | `/users/{username}` | Basic profile info |
-| 2 | `/users/{username}/repos` | Repository list & languages |
-| 3 | `/users/{username}/events` | Time-of-day patterns |
-| 4 | `/search/issues?q=author:...type:pr` | PR count for 2025 |
-| 5 | `/search/issues?q=author:...type:issue` | Issue count for 2025 |
-| 6 | `/search/issues?q=reviewed-by:...` | Review count for 2025 |
-| 7 | `github-contributions-api` | Contribution heatmap |
+| 2 | `/user/repos` | All repos (org + private) |
+| 3 | **GraphQL** | Contributions + PRs + Issues + Reviews (4-in-1!) |
+| 4 | `/users/{username}/events` | Time-of-day patterns |
 
-### With Token (Additional):
-| Endpoint | Purpose |
-|----------|---------|
-| `/graphql` | Private contributions |
-| `/user/repos` | Org & collaborative repos |
+### Without Token (7 calls)
+| # | Endpoint | Purpose |
+|---|----------|---------|
+| 1 | `/users/{username}` | Basic profile info |
+| 2 | `/users/{username}/repos` | Repository list |
+| 3 | `github-contributions-api` | Contribution heatmap |
+| 4 | `/users/{username}/events` | Time-of-day patterns |
+| 5 | `/search/issues?q=type:pr` | PR count for 2025 |
+| 6 | `/search/issues?q=type:issue` | Issue count for 2025 |
+| 7 | `/search/issues?q=reviewed-by:` | Review count for 2025 |
 
 ### Rate Limits
 
-| Type | Limit |
-|------|-------|
-| Without Token | 60 requests/hour per IP |
-| With Token | **5000 requests/hour** |
+| Type | Limit | API Efficiency |
+|------|-------|----------------|
+| Without Token | 60/hour | ~8 users/hour |
+| With Token | **5000/hour** | **~1250 users/hour** |
 
 ---
 
-## 📱 Gestures
+## 📱 Controls
 
+### Touch Gestures (Mobile)
 | Action | Effect |
 |--------|--------|
 | **Tap right 2/3** | Next slide |
 | **Tap left 1/3** | Previous slide |
 | **Hold anywhere** | Pause timer |
 | **Release** | Resume timer |
+
+### Keyboard Controls (Desktop)
+| Key | Effect |
+|-----|--------|
+| **→** or **D** | Next slide |
+| **←** or **A** | Previous slide |
+| **Space** | Pause/Resume |
+| **Escape** | Exit story |
 
 ---
 
@@ -214,7 +236,8 @@ gitstory-2025/
 ├── constants.ts        # Mock data & configuration
 ├── vite.config.ts      # Vite configuration
 ├── services/
-│   └── githubService.ts    # GitHub API + GraphQL integration
+│   ├── githubService.ts      # GitHub API + GraphQL integration
+│   └── scoringAlgorithms.ts  # Modular scoring logic (languages, repos, archetypes)
 └── components/
     ├── StoryContainer.tsx  # Slide navigation & gestures
     ├── SlideLayout.tsx     # Reusable slide wrapper
