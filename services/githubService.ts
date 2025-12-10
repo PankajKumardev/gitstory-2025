@@ -327,12 +327,15 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     const langScoreMap = calculateLanguageScores(repos);
     const topLangScores = getTopLanguages(langScoreMap, 3);
     
-    // Calculate total weight for percentages
-    const totalLangWeight = topLangScores.reduce((sum, l) => sum + l.weight, 0);
+    // Calculate total weight from ALL languages (not just top 3) for accurate percentages
+    // This fixes the 33/33/33 bug where percentages were normalized to just top 3
+    const allLangWeights = Array.from(langScoreMap.values());
+    const totalLangWeight = allLangWeights.reduce((sum, l) => sum + l.weight, 0);
 
     const topLanguages: Language[] = topLangScores.map(lang => ({
         name: lang.name,
         count: lang.repoCount,
+        // Use total weight from ALL languages for true percentage representation
         percentage: totalLangWeight > 0 ? Math.round((lang.weight / totalLangWeight) * 100) : 0,
         color: langColors[lang.name] || "#A3A3A3"
     }));
