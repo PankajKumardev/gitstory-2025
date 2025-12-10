@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Analytics } from '@vercel/analytics/react'
+import { Analytics } from '@vercel/analytics/next'
 import { Instrument_Serif, Inter_Tight, Space_Mono } from 'next/font/google'
 import './globals.css'
 
