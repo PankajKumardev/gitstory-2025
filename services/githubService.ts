@@ -327,18 +327,34 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     const langScoreMap = calculateLanguageScores(repos);
     const topLangScores = getTopLanguages(langScoreMap, 3);
     
-    // Calculate total weight from ALL languages (not just top 3) for accurate percentages
-    // This fixes the 33/33/33 bug where percentages were normalized to just top 3
-    const allLangWeights = Array.from(langScoreMap.values());
-    const totalLangWeight = allLangWeights.reduce((sum, l) => sum + l.weight, 0);
+    // Calculate the weight of just the top languages (for normalization to 100%)
+    // We normalize among displayed languages so they sum to 100%
+    const topLangWeight = topLangScores.reduce((sum, l) => sum + l.weight, 0);
 
-    const topLanguages: Language[] = topLangScores.map(lang => ({
-        name: lang.name,
-        count: lang.repoCount,
-        // Use total weight from ALL languages for true percentage representation
-        percentage: totalLangWeight > 0 ? Math.round((lang.weight / totalLangWeight) * 100) : 0,
-        color: langColors[lang.name] || "#A3A3A3"
-    }));
+    // Map top languages with percentages that sum to 100%
+    // We normalize among the displayed languages so the chart makes visual sense
+    const topLanguages: Language[] = topLangScores.map(lang => {
+        // Normalize so top 3 sum to 100% (better visual representation)
+        // This shows relative dominance among your main languages
+        const normalizedPercentage = topLangWeight > 0 ? (lang.weight / topLangWeight) * 100 : 0;
+        
+        return {
+            name: lang.name,
+            count: lang.repoCount,
+            // Use normalized percentage so displayed languages add to 100%
+            percentage: Math.round(normalizedPercentage),
+            color: langColors[lang.name] || "#A3A3A3"
+        };
+    });
+    
+    // Fix rounding errors: ensure percentages sum to exactly 100%
+    if (topLanguages.length > 0) {
+        const sum = topLanguages.reduce((s, l) => s + l.percentage, 0);
+        if (sum !== 100 && sum > 0) {
+            // Add the difference to the largest language
+            topLanguages[0].percentage += (100 - sum);
+        }
+    }
 
     if (topLanguages.length === 0) {
         topLanguages.push({ name: "Polyglot", count: 1, percentage: 100, color: "#FFFFFF" });
