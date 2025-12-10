@@ -5,10 +5,10 @@
 ### *Your Year in Code — Cinematic Wrapped*
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15.x-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/React-19.x-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind-4.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />
-  <img src="https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Framer_Motion-12.x-FF0055?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
 </p>
 
@@ -16,6 +16,12 @@
   <strong>Transform your GitHub contributions into a stunning, Instagram Stories-style cinematic experience.</strong>
 </p>
 
+<p align="center">
+  <a href="https://gitstory-2025.vercel.app">🌐 Live Demo</a> •
+  <a href="#-features">✨ Features</a> •
+  <a href="#-quick-start">⚡ Quick Start</a> •
+  <a href="#-tech-stack">🛠️ Tech Stack</a>
+</p>
 
 ---
 
@@ -33,13 +39,22 @@
 | 🏆 **Top 5 Repositories** | Showcase your best projects with smart ranking |
 | 🎨 **Language Breakdown** | Beautiful visualization of your tech stack (55+ languages!) |
 | 📱 **Mobile-First** | Touch gestures: tap left/right to navigate, hold to pause |
-| � **GitHub Token Support** | Optional authentication for private repos & org repos |
-| �🖼️ **Poster Export** | Download a shareable movie-poster style summary |
+| 🔐 **GitHub Token Support** | Optional authentication for private repos & org repos |
+| 🖼️ **Poster Export** | Download a shareable movie-poster style summary |
 | 🎊 **Confetti Celebration** | End your story with style |
+| 🔍 **SEO Optimized** | Built with Next.js for better search engine visibility |
 
 ---
 
 ## 🆕 What's New
+
+### 🚀 Next.js Migration (v3.0)
+- **Migrated from Vite to Next.js 15** for better SEO and performance
+- **Server-side metadata** for improved social sharing (Twitter, Facebook, LinkedIn)
+- **Optimized fonts** with `next/font/google` for better performance
+- **Dynamic sitemap** generation for search engines
+- **JSON-LD structured data** for rich search snippets
+- **PWA manifest** for mobile app-like experience
 
 ### 🚀 Optimized API (v2.0)
 - **With Token:** Only **4 API calls** (GraphQL bundles contributions + PR/Issue/Review counts!)
@@ -132,13 +147,13 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** and enter any GitHub username!
+Open **http://localhost:3000** and enter any GitHub username!
 
 > 💡 **Tip:** Type `demo` to see a full experience with mock data.
 
 ---
 
-## � Authentication (Optional)
+## 🔐 Authentication (Optional)
 
 For enhanced features, add a GitHub Personal Access Token:
 
@@ -158,19 +173,20 @@ For enhanced features, add a GitHub Personal Access Token:
 
 ---
 
-## �🛠️ Tech Stack
+## 🛠️ Tech Stack
 
 | Technology | Purpose |
 |------------|---------|
+| **Next.js 15** | React framework with App Router for SEO & performance |
 | **React 19** | UI Components with latest features |
 | **TypeScript** | Type-safe development |
-| **Vite 6** | Lightning-fast build tool |
 | **Tailwind CSS 4** | Utility-first styling with `@theme` config |
 | **Framer Motion** | Buttery-smooth animations |
 | **Recharts** | Beautiful, responsive charts |
 | **Lucide React** | Consistent icon system |
 | **html-to-image** | Poster PNG export |
 | **canvas-confetti** | Celebration effects 🎊 |
+| **Vercel Analytics** | Privacy-friendly analytics |
 
 ---
 
@@ -228,32 +244,40 @@ For enhanced features, add a GitHub Personal Access Token:
 
 ```
 gitstory-2025/
-├── index.html          # Entry point
-├── index.css           # Tailwind + custom styles
-├── index.tsx           # React root
-├── App.tsx             # Main app with landing page & token input
-├── types.ts            # TypeScript interfaces
-├── constants.ts        # Mock data & configuration
-├── vite.config.ts      # Vite configuration
+├── app/
+│   ├── layout.tsx          # Root layout with SEO metadata & fonts
+│   ├── page.tsx            # Main page (landing + token input)
+│   ├── globals.css         # Tailwind + custom styles
+│   └── sitemap.ts          # Dynamic sitemap generation
+├── public/
+│   ├── card.png            # OG image for social sharing
+│   ├── favicon.ico         # Site favicon
+│   ├── manifest.json       # PWA manifest
+│   └── robots.txt          # Search engine directives
+├── components/
+│   ├── StoryContainer.tsx  # Slide navigation & gestures
+│   ├── SlideLayout.tsx     # Reusable slide wrapper
+│   ├── TextReveal.tsx      # Animated text component
+│   └── slides/
+│       ├── TitleSlide.tsx
+│       ├── VelocitySlide.tsx
+│       ├── GridSlide.tsx
+│       ├── CompositionSlide.tsx
+│       ├── RoutineSlide.tsx
+│       ├── ProductivitySlide.tsx
+│       ├── CommunitySlide.tsx
+│       ├── LanguagesSlide.tsx
+│       ├── TopReposSlide.tsx
+│       ├── RepoSlide.tsx
+│       └── PosterSlide.tsx
 ├── services/
 │   ├── githubService.ts      # GitHub API + GraphQL integration
-│   └── scoringAlgorithms.ts  # Modular scoring logic (languages, repos, archetypes)
-└── components/
-    ├── StoryContainer.tsx  # Slide navigation & gestures
-    ├── SlideLayout.tsx     # Reusable slide wrapper
-    ├── TextReveal.tsx      # Animated text component
-    └── slides/
-        ├── TitleSlide.tsx
-        ├── VelocitySlide.tsx
-        ├── GridSlide.tsx
-        ├── CompositionSlide.tsx
-        ├── RoutineSlide.tsx
-        ├── ProductivitySlide.tsx
-        ├── CommunitySlide.tsx
-        ├── LanguagesSlide.tsx
-        ├── TopReposSlide.tsx     # NEW: Top 5 repos
-        ├── RepoSlide.tsx
-        └── PosterSlide.tsx
+│   └── scoringAlgorithms.ts  # Modular scoring logic
+├── types.ts                  # TypeScript interfaces
+├── constants.ts              # Mock data & configuration
+├── next.config.ts            # Next.js configuration
+├── postcss.config.mjs        # PostCSS for Tailwind
+└── tsconfig.json             # TypeScript configuration
 ```
 
 ---
@@ -264,15 +288,32 @@ gitstory-2025/
 # Production build
 npm run build
 
-# Preview production build
-npm run preview
+# Start production server
+npm start
+
+# Or preview locally
+npm run dev
 ```
 
-Deploy the `dist/` folder to any static host:
-- **Vercel** (recommended)
+Deploy to any platform that supports Next.js:
+- **Vercel** (recommended - zero config)
 - **Netlify**
-- **GitHub Pages**
+- **Railway**
 - **Cloudflare Pages**
+
+---
+
+## 🔍 SEO Features
+
+GitStory 2025 is optimized for search engines:
+
+- ✅ **40+ SEO keywords** including "GitHub Wrapped", "Git Story", etc.
+- ✅ **OpenGraph tags** for Facebook/LinkedIn sharing
+- ✅ **Twitter Cards** for beautiful Twitter previews
+- ✅ **JSON-LD structured data** for rich search snippets
+- ✅ **Dynamic sitemap** at `/sitemap.xml`
+- ✅ **robots.txt** for search engine crawlers
+- ✅ **PWA manifest** for mobile app-like experience
 
 ---
 
@@ -287,5 +328,7 @@ MIT © 2025
 **Made with 💜 for developers who ship**
 
 *Star ⭐ this repo if you found it useful!*
+
+[🌐 Try GitStory 2025](https://gitstory-2025.vercel.app) | [🐦 Twitter](https://twitter.com/pankajkumar_dev)
 
 </div>
