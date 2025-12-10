@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect, useState, useRef } from 'react';
 import { SlideLayout } from '../SlideLayout';
 import { GitStoryData } from '../../types';
@@ -40,25 +42,34 @@ export const PosterSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
     frame();
   }, []);
 
-  const generateImage = async (skipFonts = false) => {
+  const generateImage = async (skipFonts = false): Promise<void> => {
     if (!posterRef.current) return;
 
-    const dataUrl = await toPng(posterRef.current, {
-      cacheBust: true,
-      pixelRatio: 2,
-      quality: 0.95,
-      skipFonts: skipFonts,
-      filter: (node) => {
-        // Filter out elements that might cause issues
-        const tagName = (node as HTMLElement).tagName;
-        return tagName !== 'LINK' && tagName !== 'SCRIPT';
-      }
-    });
+    try {
+      const dataUrl = await toPng(posterRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        quality: 0.95,
+        skipFonts: skipFonts,
+        filter: (node) => {
+          // Filter out elements that might cause issues
+          const tagName = (node as HTMLElement).tagName;
+          return tagName !== 'LINK' && tagName !== 'SCRIPT';
+        }
+      });
 
-    const link = document.createElement('a');
-    link.download = `gitstory-${data.username}-${data.year}.png`;
-    link.href = dataUrl;
-    link.click();
+      const link = document.createElement('a');
+      link.download = `gitstory-${data.username}-${data.year}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      // Re-throw to allow outer handler to retry with skipFonts
+      if (!skipFonts) {
+        throw err;
+      }
+      // If we're already skipping fonts and still failing, throw
+      throw new Error('Image generation failed');
+    }
   };
 
   const handleDownload = async (e: React.MouseEvent | React.PointerEvent) => {
@@ -70,18 +81,10 @@ export const PosterSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
     setError(null);
     
     try {
-      // First attempt: Try normally (with fonts)
-      try {
-        await generateImage(false);
-        setHasDownloaded(true);
-        setTimeout(() => setHasDownloaded(false), 3000);
-      } catch (err) {
-        console.warn("Standard download failed, retrying without fonts embedding...", err);
-        // Second attempt: Skip fonts if CORS/CSS access fails
-        await generateImage(true);
-        setHasDownloaded(true);
-        setTimeout(() => setHasDownloaded(false), 3000);
-      }
+      // Try with fonts embedded (Next.js local fonts should not have CORS issues)
+      await generateImage(false);
+      setHasDownloaded(true);
+      setTimeout(() => setHasDownloaded(false), 3000);
     } catch (err) {
       console.error("Failed to generate poster image:", err);
       setError("Failed to save. Try screenshotting!");

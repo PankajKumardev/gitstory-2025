@@ -1,0 +1,9 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://gitstory-2025.vercel.app/sitemap.xml
+
+# Disallow admin or API routes (if any)
+Disallow: /api/

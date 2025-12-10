@@ -1,90 +1,92 @@
-import React, { useState, useEffect } from 'react';
-import { fetchUserStory } from './services/githubService';
-import { GitStoryData } from './types';
-import { StoryContainer } from './components/StoryContainer';
-import { Github, Play, Loader2, AlertCircle, Key, ChevronDown, ChevronUp, Lock, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+'use client'
 
-const App: React.FC = () => {
-  const [username, setUsername] = useState('');
-  const [token, setToken] = useState('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [storyData, setStoryData] = useState<GitStoryData | null>(null);
-  const [showStory, setShowStory] = useState(false);
-  const [error, setError] = useState<{ message: string; type: 'rate_limit' | 'not_found' | 'auth' | 'generic' } | null>(null);
+import { useState, useEffect } from 'react'
+import { fetchUserStory } from '@/services/githubService'
+import { GitStoryData } from '@/types'
+import { StoryContainer } from '@/components/StoryContainer'
+import { Github, Play, Loader2, AlertCircle, Key, ChevronDown, ChevronUp, Lock, RefreshCw, CheckCircle2, XCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+
+export default function Home() {
+  const [username, setUsername] = useState('')
+  const [token, setToken] = useState('')
+  const [showTokenInput, setShowTokenInput] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [storyData, setStoryData] = useState<GitStoryData | null>(null)
+  const [showStory, setShowStory] = useState(false)
+  const [error, setError] = useState<{ message: string; type: 'rate_limit' | 'not_found' | 'auth' | 'generic' } | null>(null)
   
   // Token validation state
-  const [tokenStatus, setTokenStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
-  const [tokenUser, setTokenUser] = useState<{ login: string; avatar_url: string } | null>(null);
+  const [tokenStatus, setTokenStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle')
+  const [tokenUser, setTokenUser] = useState<{ login: string; avatar_url: string } | null>(null)
 
   // Validate token when it changes
   useEffect(() => {
     if (!token || token.length < 10) {
-      setTokenStatus('idle');
-      setTokenUser(null);
-      return;
+      setTokenStatus('idle')
+      setTokenUser(null)
+      return
     }
 
     const validateToken = async () => {
-      setTokenStatus('validating');
+      setTokenStatus('validating')
       try {
         const res = await fetch('https://api.github.com/user', {
           headers: { 'Authorization': `Bearer ${token}` }
-        });
+        })
         if (res.ok) {
-          const user = await res.json();
-          setTokenUser({ login: user.login, avatar_url: user.avatar_url });
-          setTokenStatus('valid');
+          const user = await res.json()
+          setTokenUser({ login: user.login, avatar_url: user.avatar_url })
+          setTokenStatus('valid')
           // Auto-fill username if empty
-          if (!username) setUsername(user.login);
+          if (!username) setUsername(user.login)
         } else {
-          setTokenStatus('invalid');
-          setTokenUser(null);
+          setTokenStatus('invalid')
+          setTokenUser(null)
         }
       } catch {
-        setTokenStatus('invalid');
-        setTokenUser(null);
+        setTokenStatus('invalid')
+        setTokenUser(null)
       }
-    };
+    }
 
-    const debounce = setTimeout(validateToken, 500);
-    return () => clearTimeout(debounce);
-  }, [token]);
+    const debounce = setTimeout(validateToken, 500)
+    return () => clearTimeout(debounce)
+  }, [token, username])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username) return;
+    e.preventDefault()
+    if (!username) return
 
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true)
+    setError(null)
     try {
-      const data = await fetchUserStory(username.trim(), token.trim() || undefined);
-      setStoryData(data);
-      setShowStory(true);
+      const data = await fetchUserStory(username.trim(), token.trim() || undefined)
+      setStoryData(data)
+      setShowStory(true)
     } catch (err: any) {
-      console.error(err);
+      console.error(err)
       
       // Parse error type for better UX
-      const errorMessage = err.message || "Failed to generate story.";
-      let errorType: 'rate_limit' | 'not_found' | 'auth' | 'generic' = 'generic';
+      const errorMessage = err.message || "Failed to generate story."
+      let errorType: 'rate_limit' | 'not_found' | 'auth' | 'generic' = 'generic'
       
       if (errorMessage.toLowerCase().includes('rate limit')) {
-        errorType = 'rate_limit';
+        errorType = 'rate_limit'
       } else if (errorMessage.toLowerCase().includes('not found')) {
-        errorType = 'not_found';
+        errorType = 'not_found'
       } else if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('401')) {
-        errorType = 'auth';
+        errorType = 'auth'
       }
       
-      setError({ message: errorMessage, type: errorType });
+      setError({ message: errorMessage, type: errorType })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const getErrorDetails = () => {
-    if (!error) return null;
+    if (!error) return null
     
     switch (error.type) {
       case 'rate_limit':
@@ -95,36 +97,36 @@ const App: React.FC = () => {
             ? 'Try again in a few minutes, or check your token permissions.'
             : 'Add a GitHub token below for 5000 requests/hour instead of 60.',
           showTokenHint: !token
-        };
+        }
       case 'not_found':
         return {
           title: 'User Not Found',
           message: error.message,
           suggestion: 'Check the username spelling. Try "demo" to see the experience.',
           showTokenHint: false
-        };
+        }
       case 'auth':
         return {
           title: 'Authentication Error',
           message: error.message,
           suggestion: 'Your token may be invalid or expired. Please check it.',
           showTokenHint: true
-        };
+        }
       default:
         return {
           title: 'Something Went Wrong',
           message: error.message,
           suggestion: 'Please try again. If the problem persists, try "demo".',
           showTokenHint: false
-        };
+        }
     }
-  };
-
-  if (showStory && storyData) {
-    return <StoryContainer data={storyData} onComplete={() => setShowStory(false)} />;
   }
 
-  const errorDetails = getErrorDetails();
+  if (showStory && storyData) {
+    return <StoryContainer data={storyData} onComplete={() => setShowStory(false)} />
+  }
+
+  const errorDetails = getErrorDetails()
 
   return (
     <div className="min-h-[100dvh] bg-black flex flex-col items-center justify-center p-6 text-white overflow-hidden relative">
@@ -150,8 +152,8 @@ const App: React.FC = () => {
               type="text"
               value={username}
               onChange={(e) => {
-                setUsername(e.target.value);
-                if(error) setError(null);
+                setUsername(e.target.value)
+                if(error) setError(null)
               }}
               placeholder="Enter GitHub Username"
               className="w-full bg-neutral-900/50 border border-neutral-800 rounded-xl px-6 py-4 text-xl font-mono text-center focus:outline-none focus:border-hero-blue focus:ring-1 focus:ring-hero-blue transition-all placeholder:text-neutral-600"
@@ -335,7 +337,5 @@ const App: React.FC = () => {
         </div>
       </motion.div>
     </div>
-  );
-};
-
-export default App;
+  )
+}

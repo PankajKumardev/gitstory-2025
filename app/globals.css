@@ -10,9 +10,10 @@
   --color-hero-purple: #8B5CF6;
   --color-code-yellow: #EAB308;
   
-  --font-serif: "Instrument Serif", serif;
-  --font-sans: "Inter Tight", sans-serif;
-  --font-mono: "Space Mono", monospace;
+  /* Font families using Next.js font CSS variables */
+  --font-serif: var(--font-instrument-serif), "Instrument Serif", serif;
+  --font-sans: var(--font-inter-tight), "Inter Tight", sans-serif;
+  --font-mono: var(--font-space-mono), "Space Mono", monospace;
   
   --animate-spin-slow: spin 20s linear infinite;
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -24,6 +25,7 @@ body {
   color: #ffffff;
   overflow: hidden;
   touch-action: none;
+  font-family: var(--font-inter-tight), "Inter Tight", sans-serif;
 }
 
 /* Custom Scrollbar hide */

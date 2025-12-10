@@ -1,0 +1,30 @@
+{
+    "name": "GitStory 2025",
+    "short_name": "GitStory",
+    "description": "Transform your GitHub contributions into a stunning cinematic experience. Your GitHub Wrapped for 2025!",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#0a0a0a",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/favicon.ico",
+            "sizes": "64x64",
+            "type": "image/x-icon"
+        },
+        {
+            "src": "/card.png",
+            "sizes": "1200x630",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "categories": [
+        "developer tools",
+        "productivity",
+        "utilities"
+    ],
+    "lang": "en",
+    "dir": "ltr"
+}

@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react';
 import { SlideLayout } from '../SlideLayout';
 import { GitStoryData } from '../../types';
