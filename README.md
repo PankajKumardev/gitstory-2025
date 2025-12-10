@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://gitstory-2025.vercel.app">🌐 Live Demo</a> •
+  <a href="https://gitstory.pankajk.tech/">🌐 Live Demo</a> •
   <a href="#-features">✨ Features</a> •
   <a href="#-quick-start">⚡ Quick Start</a> •
   <a href="#-tech-stack">🛠️ Tech Stack</a>
@@ -329,6 +329,6 @@ MIT © 2025
 
 *Star ⭐ this repo if you found it useful!*
 
-[🌐 Try GitStory 2025](https://gitstory-2025.vercel.app) | [🐦 Twitter](https://twitter.com/pankajkumar_dev)
+[🌐 Try GitStory 2025](https://gitstory.pankajk.tech/) | [🐦 Twitter](https://twitter.com/pankajkumar_dev)
 
 </div>

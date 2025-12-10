@@ -29,7 +29,7 @@ const spaceMono = Space_Mono({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://gitstory-2025.vercel.app'),
+  metadataBase: new URL('https://gitstory.pankajk.tech/'),
   title: 'GitStory 2025 - Your Year in Code | GitHub Wrapped',
   description: 'Relive your coding journey with GitStory 2025. Transform your GitHub contributions into a stunning cinematic experience with beautiful animations and personalized insights. Your GitHub Wrapped for 2025!',
   keywords: [
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
   robots: 'index, follow',
   openGraph: {
     type: 'website',
-    url: 'https://gitstory-2025.vercel.app/',
+    url: 'https://gitstory.pankajk.tech//',
     title: 'GitStory 2025 - Your Year in Code | GitHub Wrapped',
     description: 'Relive your coding journey with GitStory 2025. Transform your GitHub contributions into a stunning cinematic experience. Your GitHub Wrapped for 2025!',
     siteName: 'GitStory',
@@ -110,7 +110,7 @@ export const metadata: Metadata = {
     apple: '/card.png',
   },
   other: {
-    'og:image:secure_url': 'https://gitstory-2025.vercel.app/card.png',
+    'og:image:secure_url': 'https://gitstory.pankajk.tech//card.png',
   },
 }
 
@@ -128,7 +128,7 @@ const jsonLd = {
   '@type': 'WebApplication',
   name: 'GitStory 2025',
   description: 'Transform your GitHub contributions into a stunning cinematic experience. Your GitHub Wrapped for 2025!',
-  url: 'https://gitstory-2025.vercel.app',
+  url: 'https://gitstory.pankajk.tech/',
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Web',
   offers: {
@@ -141,7 +141,7 @@ const jsonLd = {
     name: 'Pankaj Kumar',
     url: 'https://twitter.com/pankajkumar_dev',
   },
-  screenshot: 'https://gitstory-2025.vercel.app/card.png',
+  screenshot: 'https://gitstory.pankajk.tech//card.png',
   featureList: [
     'GitHub Year in Review',
     'Contribution Statistics',
