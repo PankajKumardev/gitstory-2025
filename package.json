@@ -15,7 +15,7 @@
     "framer-motion": "^12.23.25",
     "html-to-image": "1.11.11",
     "lucide-react": "^0.556.0",
-    "next": "^16.0.8",
+    "next": "16.0.10",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "recharts": "^3.5.1"
