@@ -6,8 +6,11 @@ import { GitStoryData } from '../../types';
 import { TextReveal } from '../TextReveal';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { useTheme } from '@/context/ThemeContext';
 
 export const CompositionSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const { contributionBreakdown } = data;
   
   const chartData = [
@@ -24,11 +27,11 @@ export const CompositionSlide: React.FC<{ data: GitStoryData }> = ({ data }) => 
         <div className="mb-8 text-center">
             <TextReveal 
                 text="The DNA." 
-                className="text-xl font-mono text-neutral-400 mb-2 uppercase tracking-widest justify-center" 
+                className={`text-xl font-mono mb-2 uppercase tracking-widest justify-center ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`} 
             />
             <TextReveal 
                 text="How you built it." 
-                className="text-4xl font-serif text-white justify-center" 
+                className={`text-4xl font-serif justify-center ${isDark ? 'text-white' : 'text-black'}`} 
             />
         </div>
 
@@ -44,7 +47,7 @@ export const CompositionSlide: React.FC<{ data: GitStoryData }> = ({ data }) => 
                     paddingAngle={5}
                     dataKey="value"
                     stroke="none"
-                    isAnimationActive={false} // Fix for chart visibility issues in some contexts
+                    isAnimationActive={false}
                   >
                     {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -53,9 +56,8 @@ export const CompositionSlide: React.FC<{ data: GitStoryData }> = ({ data }) => 
                 </PieChart>
              </ResponsiveContainer>
              
-             {/* Center Label */}
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="text-2xl font-bold text-white font-mono">100%</span>
+                <span className={`text-2xl font-bold font-mono ${isDark ? 'text-white' : 'text-black'}`}>100%</span>
              </div>
         </div>
 
@@ -66,12 +68,12 @@ export const CompositionSlide: React.FC<{ data: GitStoryData }> = ({ data }) => 
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 1 + (index * 0.2) }}
-                    className="flex items-center gap-3 bg-white/5 rounded-lg p-3 backdrop-blur-sm border border-white/10"
+                    className={`flex items-center gap-3 rounded-lg p-3 backdrop-blur-sm border ${isDark ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10'}`}
                 >
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                     <div className="flex flex-col">
-                        <span className="text-sm text-neutral-400 font-mono uppercase">{item.name}</span>
-                        <span className="text-lg text-white font-bold">{item.value.toLocaleString()}</span>
+                        <span className={`text-sm font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{item.name}</span>
+                        <span className={`text-lg font-bold ${isDark ? 'text-white' : 'text-black'}`}>{item.value.toLocaleString()}</span>
                     </div>
                 </motion.div>
             ))}

@@ -5,14 +5,13 @@ import { SlideLayout } from '../SlideLayout';
 import { GitStoryData } from '../../types';
 import { TextReveal } from '../TextReveal';
 import { motion } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
 export const GridSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
-  // Normalize data for visualization
-  // Create a 7x20 grid (showing ~5 months) for aesthetic purposes on mobile
-  // or use the whole year scaling down. 
-  // Let's use the last 150 days to keep the "cubes" visible size.
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   
-  const displayData = data.velocityData.slice(-140); // Last ~20 weeks
+  const displayData = data.velocityData.slice(-140);
   
   return (
     <SlideLayout gradientStart="#10b981" gradientEnd="#064e3b">
@@ -21,7 +20,7 @@ export const GridSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
         <div className="mb-8 text-center">
             <TextReveal 
                 text="Every commit counts." 
-                className="text-4xl font-serif text-white mb-2" 
+                className={`text-4xl font-serif mb-2 ${isDark ? 'text-white' : 'text-black'}`} 
             />
              <TextReveal 
                 text={`${data.totalCommits} contributions made.`} 
@@ -31,9 +30,7 @@ export const GridSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
             />
         </div>
 
-        {/* The Grid Visual */}
-        <div className="relative p-4 bg-neutral-900/50 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-sm overflow-hidden">
-            {/* Grid Container */}
+        <div className={`relative p-4 rounded-2xl border shadow-2xl backdrop-blur-sm overflow-hidden ${isDark ? 'bg-neutral-900/50 border-white/10' : 'bg-neutral-100/50 border-black/10'}`}>
             <div className="flex gap-1">
                 {Array.from({ length: 20 }).map((_, weekIndex) => (
                     <div key={weekIndex} className="flex flex-col gap-1">
@@ -41,8 +38,7 @@ export const GridSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
                             const dataIndex = weekIndex * 7 + dayIndex;
                             const commitCount = displayData[dataIndex]?.commits || 0;
                             
-                            // Color logic
-                            let bgClass = "bg-neutral-800";
+                            let bgClass = isDark ? "bg-neutral-800" : "bg-neutral-300";
                             let opacity = 0.3;
                             
                             if (commitCount > 0) {
@@ -69,14 +65,14 @@ export const GridSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
                     </div>
                 ))}
             </div>
-             <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent opacity-60 pointer-events-none"></div>
+             <div className={`absolute inset-0 bg-gradient-to-t via-transparent to-transparent opacity-60 pointer-events-none ${isDark ? 'from-neutral-900' : 'from-neutral-100'}`}></div>
         </div>
 
         <motion.p 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 2.5 }}
-            className="mt-8 text-xs font-mono text-neutral-500 uppercase tracking-widest"
+            className={`mt-8 text-xs font-mono uppercase tracking-widest ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}
         >
             Visualizing recent activity
         </motion.p>

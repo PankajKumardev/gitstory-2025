@@ -5,9 +5,12 @@ import { SlideLayout } from '../SlideLayout';
 import { GitStoryData } from '../../types';
 import { TextReveal } from '../TextReveal';
 import { motion } from 'framer-motion';
-import { Users, Star, GitFork, Heart } from 'lucide-react';
+import { Users, Star } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 export const CommunitySlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const { community } = data;
 
   return (
@@ -17,11 +20,10 @@ export const CommunitySlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
         <div className="mb-12 text-center">
             <TextReveal 
                 text="The Impact." 
-                className="text-xl font-mono text-rose-300 mb-4 uppercase tracking-widest justify-center" 
+                className={`text-xl font-mono mb-4 uppercase tracking-widest justify-center ${isDark ? 'text-rose-300' : 'text-rose-700'}`} 
             />
         </div>
 
-        {/* Big Impact Numbers */}
         <div className="grid grid-cols-1 gap-12 w-full max-w-md">
             
             <motion.div 
@@ -30,11 +32,11 @@ export const CommunitySlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
                 transition={{ type: "spring", delay: 0.5 }}
                 className="flex flex-col items-center"
             >
-                <div className="flex items-center gap-4 text-white mb-2">
+                <div className={`flex items-center gap-4 mb-2 ${isDark ? 'text-white' : 'text-black'}`}>
                     <Users size={48} className="text-rose-400" />
                     <span className="text-7xl font-serif italic font-bold">{community.followers.toLocaleString()}</span>
                 </div>
-                <span className="text-neutral-400 font-mono tracking-widest uppercase text-sm">Followers inspired</span>
+                <span className={`font-mono tracking-widest uppercase text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Followers inspired</span>
             </motion.div>
 
             <motion.div 
@@ -43,11 +45,11 @@ export const CommunitySlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
                 transition={{ type: "spring", delay: 1.0 }}
                 className="flex flex-col items-center"
             >
-                <div className="flex items-center gap-4 text-white mb-2">
+                <div className={`flex items-center gap-4 mb-2 ${isDark ? 'text-white' : 'text-black'}`}>
                     <Star size={48} className="text-yellow-400" />
                     <span className="text-7xl font-serif italic font-bold">{community.totalStars.toLocaleString()}</span>
                 </div>
-                <span className="text-neutral-400 font-mono tracking-widest uppercase text-sm">Stars Earned</span>
+                <span className={`font-mono tracking-widest uppercase text-sm ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Stars Earned</span>
             </motion.div>
 
         </div>
@@ -56,15 +58,14 @@ export const CommunitySlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 2.0 }}
-            className="mt-16 bg-white/10 backdrop-blur-md rounded-full px-8 py-4 flex items-center gap-4 border border-white/20"
+            className={`mt-16 backdrop-blur-md rounded-full px-8 py-4 flex items-center gap-4 border ${isDark ? 'bg-white/10 border-white/20' : 'bg-black/10 border-black/20'}`}
         >
             <div className="flex -space-x-3">
-                 {/* Fake avatars for effect */}
-                <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-black" />
-                <div className="w-8 h-8 rounded-full bg-green-500 border-2 border-black" />
-                <div className="w-8 h-8 rounded-full bg-purple-500 border-2 border-black" />
+                <div className={`w-8 h-8 rounded-full bg-blue-500 border-2 ${isDark ? 'border-black' : 'border-white'}`} />
+                <div className={`w-8 h-8 rounded-full bg-green-500 border-2 ${isDark ? 'border-black' : 'border-white'}`} />
+                <div className={`w-8 h-8 rounded-full bg-purple-500 border-2 ${isDark ? 'border-black' : 'border-white'}`} />
             </div>
-            <span className="text-sm font-sans text-white">
+            <span className={`text-sm font-sans ${isDark ? 'text-white' : 'text-black'}`}>
                 You're building more than code.
             </span>
         </motion.div>

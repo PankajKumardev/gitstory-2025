@@ -6,11 +6,13 @@ import { GitStoryData } from '../../types';
 import { TextReveal } from '../TextReveal';
 import { motion } from 'framer-motion';
 import { Sun, Moon, Sunrise, Sunset, Clock } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 export const ProductivitySlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const { productivity, archetype } = data;
   
-  // Icon based on time
   const getIcon = () => {
     if (productivity.timeOfDay === "Morning") return <Sunrise size={100} className="text-orange-400" />;
     if (productivity.timeOfDay === "Afternoon") return <Sun size={100} className="text-yellow-400" />;
@@ -33,7 +35,7 @@ export const ProductivitySlide: React.FC<{ data: GitStoryData }> = ({ data }) =>
         <div className="mb-12">
             <TextReveal 
                 text="The Zone." 
-                className="text-xl font-mono text-neutral-400 mb-8 uppercase tracking-widest justify-center" 
+                className={`text-xl font-mono mb-8 uppercase tracking-widest justify-center ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`} 
             />
         </div>
 
@@ -43,20 +45,20 @@ export const ProductivitySlide: React.FC<{ data: GitStoryData }> = ({ data }) =>
             transition={{ type: "spring", duration: 1.5 }}
             className="mb-8 relative"
         >
-            <div className="absolute inset-0 bg-white/20 blur-3xl rounded-full"></div>
+            <div className={`absolute inset-0 blur-3xl rounded-full ${isDark ? 'bg-white/20' : 'bg-black/10'}`}></div>
             {getIcon()}
         </motion.div>
 
         <TextReveal 
           text={`You were most active in the ${productivity.timeOfDay.toLowerCase()}.`} 
-          className="text-4xl font-serif text-white mb-6 justify-center" 
+          className={`text-4xl font-serif mb-6 justify-center ${isDark ? 'text-white' : 'text-black'}`} 
           highlight={productivity.timeOfDay.toLowerCase()}
           delay={0.5}
         />
 
-        <div className="flex items-center gap-3 bg-white/10 px-6 py-3 rounded-full backdrop-blur-md">
-            <Clock size={20} className="text-white/70" />
-            <span className="text-xl font-mono text-white">Peak: {productivity.peakHour}:00</span>
+        <div className={`flex items-center gap-3 px-6 py-3 rounded-full backdrop-blur-md ${isDark ? 'bg-white/10' : 'bg-black/10'}`}>
+            <Clock size={20} className={isDark ? 'text-white/70' : 'text-black/70'} />
+            <span className={`text-xl font-mono ${isDark ? 'text-white' : 'text-black'}`}>Peak: {productivity.peakHour}:00</span>
         </div>
         
         <motion.div 
@@ -65,8 +67,8 @@ export const ProductivitySlide: React.FC<{ data: GitStoryData }> = ({ data }) =>
             transition={{ delay: 2 }}
             className="mt-12"
         >
-            <p className="text-neutral-400 text-sm font-sans mb-2 tracking-widest uppercase">Your Developer Archetype</p>
-            <h2 className="text-5xl font-bold font-serif italic text-transparent bg-clip-text bg-gradient-to-r from-white to-white/60">
+            <p className={`text-sm font-sans mb-2 tracking-widest uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Your Developer Archetype</p>
+            <h2 className={`text-5xl font-bold font-serif italic text-transparent bg-clip-text bg-gradient-to-r ${isDark ? 'from-white to-white/60' : 'from-black to-black/60'}`}>
                 {archetype}
             </h2>
         </motion.div>

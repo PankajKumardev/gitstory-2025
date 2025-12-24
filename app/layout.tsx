@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { Instrument_Serif, Inter_Tight, Space_Mono } from 'next/font/google'
+import { SessionProvider } from '@/components/providers/SessionProvider'
+import { ThemeProvider } from '@/context/ThemeContext'
 import './globals.css'
 
 // Configure fonts using Next.js font optimization
@@ -178,7 +180,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${instrumentSerif.variable} ${interTight.variable} ${spaceMono.variable}`}>
+    <html lang="en" className={`dark ${instrumentSerif.variable} ${interTight.variable} ${spaceMono.variable}`}>
       <head>
         {/* Manifest for PWA */}
         <link rel="manifest" href="/manifest.json" />
@@ -187,10 +189,30 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* Prevent flash of wrong theme */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('gitstory-theme');
+                  if (theme === 'light') {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
-        <Analytics />
-        {children}
+        <SessionProvider>
+          <ThemeProvider>
+            <Analytics />
+            {children}
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   )

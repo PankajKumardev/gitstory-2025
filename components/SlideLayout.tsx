@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SlideLayoutProps {
   children: React.ReactNode;
@@ -10,16 +11,19 @@ interface SlideLayoutProps {
 }
 
 export const SlideLayout: React.FC<SlideLayoutProps> = ({ children, gradientStart = "#3B82F6", gradientEnd = "#8B5CF6" }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   return (
     <motion.div
-      className="absolute inset-0 w-full h-full flex flex-col items-center justify-center overflow-hidden bg-black"
+      className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center overflow-hidden transition-colors ${isDark ? 'bg-black text-white' : 'bg-white text-black'}`}
       initial={{ x: "100%" }}
       animate={{ x: "0%", scale: 1, filter: "brightness(1)" }}
       exit={{ scale: 0.9, opacity: 0, filter: "brightness(0.5)", transition: { duration: 0.6 } }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       {/* Dynamic Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-20">
+      <div className={`absolute inset-0 z-0 pointer-events-none ${isDark ? 'opacity-20' : 'opacity-20'}`}>
          <motion.div 
            animate={{ rotate: 360 }}
            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}

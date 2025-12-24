@@ -15,7 +15,8 @@ import { LanguagesSlide } from './slides/LanguagesSlide';
 import { TopReposSlide } from './slides/TopReposSlide';
 import { RepoSlide } from './slides/RepoSlide';
 import { PosterSlide } from './slides/PosterSlide';
-import { X } from 'lucide-react';
+import { X, Sun, Moon, Play, Pause, Share2 } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 interface StoryContainerProps {
   data: GitStoryData;
@@ -23,11 +24,16 @@ interface StoryContainerProps {
 }
 
 export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete }) => {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const totalSlides = 11;
   const progressIntervalRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
+  
+  // Check if we're on the last slide (PosterSlide)
+  const isLastSlide = currentSlide === SlideType.POSTER;
 
   const handleNext = useCallback(() => {
     if (currentSlide < totalSlides - 1) {
@@ -45,9 +51,10 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
     }
   }, [currentSlide]);
 
-  // Timer Logic
+  // Timer Logic - PAUSED on last slide
   useEffect(() => {
-    if (isPaused) return;
+    // Don't auto-progress on the last slide (PosterSlide)
+    if (isPaused || isLastSlide) return;
 
     const startTime = Date.now();
     const startProgress = progress;
@@ -70,7 +77,7 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
     return () => {
       if (progressIntervalRef.current) cancelAnimationFrame(progressIntervalRef.current);
     };
-  }, [currentSlide, isPaused, handleNext]);
+  }, [currentSlide, isPaused, handleNext, isLastSlide]);
 
   // Keyboard Navigation
   useEffect(() => {
@@ -78,15 +85,20 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
       switch (e.key) {
         case 'ArrowRight':
         case 'd':
+        case 'Enter': // Added Enter key for last slide
           handleNext();
           break;
         case 'ArrowLeft':
         case 'a':
           handlePrev();
           break;
-        case ' ': // Space to pause/resume
+        case ' ': // Space to pause/resume (or exit on last slide)
           e.preventDefault();
-          setIsPaused(prev => !prev);
+          if (isLastSlide) {
+            onComplete();
+          } else {
+            setIsPaused(prev => !prev);
+          }
           break;
         case 'Escape':
           onComplete();
@@ -96,7 +108,7 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNext, handlePrev, onComplete]);
+  }, [handleNext, handlePrev, onComplete, isLastSlide]);
 
   // Gestures
   const touchStartX = useRef(0);
@@ -107,7 +119,11 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
     if ((e.target as HTMLElement).closest('button, a, input')) return;
 
     touchStartX.current = e.clientX;
-    setIsPaused(true);
+    
+    // Don't pause on last slide since it's already stopped
+    if (!isLastSlide) {
+      setIsPaused(true);
+    }
     
     longPressTimer.current = window.setTimeout(() => {
       // Long press logic handled by setting paused to true immediately
@@ -116,7 +132,10 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    setIsPaused(false);
+    
+    if (!isLastSlide) {
+      setIsPaused(false);
+    }
 
     // Ignore interaction if clicking a button/interactive element
     if ((e.target as HTMLElement).closest('button, a, input')) return;
@@ -153,32 +172,51 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
 
   return (
     <div 
-      className="fixed inset-0 w-full h-[100dvh] bg-black select-none cursor-pointer"
+      className={`fixed inset-0 w-full h-[100dvh] select-none cursor-pointer transition-colors ${isDark ? 'bg-black' : 'bg-white'}`}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onPointerLeave={() => setIsPaused(false)}
+      onPointerLeave={() => !isLastSlide && setIsPaused(false)}
     >
       {/* Progress Bar */}
       <div className="absolute top-4 left-2 right-2 flex gap-1 z-50">
         {Array.from({ length: totalSlides }).map((_, idx) => (
-          <div key={idx} className="h-1 flex-1 bg-neutral-800 rounded-full overflow-hidden">
+          <div key={idx} className={`h-1 flex-1 rounded-full overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-neutral-300'}`}>
             <div 
-              className="h-full bg-white transition-all duration-100 ease-linear"
+              className={`h-full transition-all duration-100 ease-linear ${isDark ? 'bg-white' : 'bg-neutral-800'}`}
               style={{ 
-                width: idx < currentSlide ? '100%' : idx === currentSlide ? `${progress}%` : '0%' 
+                width: idx < currentSlide ? '100%' : idx === currentSlide ? (isLastSlide ? '100%' : `${progress}%`) : '0%' 
               }}
             />
           </div>
         ))}
       </div>
 
-      {/* Close Button */}
-      <button 
-        onClick={(e) => { e.stopPropagation(); onComplete(); }}
-        className="absolute top-8 right-4 z-50 text-white/50 hover:text-white p-2"
-      >
-        <X size={24} />
-      </button>
+      {/* Control Buttons - Right Side */}
+      <div className="absolute top-8 right-4 z-50 flex items-center gap-1">
+        {!isLastSlide && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsPaused(prev => !prev); }}
+            className={`p-2 rounded-lg transition-all active:scale-90 ${isDark ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-black/70 hover:text-black hover:bg-black/10'}`}
+            aria-label={isPaused ? "Play" : "Pause"}
+          >
+            {isPaused ? <Play size={20} /> : <Pause size={20} />}
+          </button>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
+          className={`p-2 rounded-lg transition-all active:scale-90 ${isDark ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-black/70 hover:text-black hover:bg-black/10'}`}
+          aria-label="Toggle theme"
+        >
+          {isDark ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+        <button 
+          onClick={(e) => { e.stopPropagation(); onComplete(); }}
+          className={`p-2 rounded-lg transition-all active:scale-90 ${isDark ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-black/70 hover:text-black hover:bg-black/10'}`}
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+      </div>
 
       {/* Slide Content */}
       <AnimatePresence mode="popLayout" initial={false}>

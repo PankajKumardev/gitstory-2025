@@ -19,13 +19,67 @@
   --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* CSS Variables for theming */
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #171717;
+  --bg-tertiary: #262626;
+  --text-primary: #ffffff;
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #737373;
+  --border-color: #262626;
+  --card-bg: rgba(23, 23, 23, 0.5);
+  --gradient-blue: rgba(59, 130, 246, 0.2);
+  --gradient-purple: rgba(139, 92, 246, 0.2);
+}
+
+/* Light theme */
+:root.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e5e5e5;
+  --text-primary: #171717;
+  --text-secondary: #525252;
+  --text-tertiary: #737373;
+  --border-color: #e5e5e5;
+  --card-bg: rgba(245, 245, 245, 0.8);
+  --gradient-blue: rgba(59, 130, 246, 0.15);
+  --gradient-purple: rgba(139, 92, 246, 0.15);
+}
+
 /* Base styles */
 body {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   overflow: hidden;
   touch-action: none;
   font-family: var(--font-inter-tight), "Inter Tight", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Theme-aware background class */
+.theme-bg {
+  background-color: var(--bg-primary);
+}
+
+.theme-bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.theme-text {
+  color: var(--text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--text-secondary);
+}
+
+.theme-border {
+  border-color: var(--border-color);
+}
+
+.theme-card {
+  background-color: var(--card-bg);
 }
 
 /* Custom Scrollbar hide */
@@ -36,4 +90,82 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* OAuth Button Styles */
+.oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.oauth-btn-github {
+  background: linear-gradient(135deg, #24292e 0%, #1a1e22 100%);
+  color: #ffffff;
+  border-color: #30363d;
+}
+
+.oauth-btn-github:hover {
+  background: linear-gradient(135deg, #2d333b 0%, #22272e 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.oauth-btn-gitlab {
+  background: linear-gradient(135deg, #fc6d26 0%, #e24329 100%);
+  color: #ffffff;
+}
+
+.oauth-btn-gitlab:hover {
+  background: linear-gradient(135deg, #fd7e3d 0%, #f55037 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(226, 67, 41, 0.3);
+}
+
+/* Light theme specific overrides */
+:root.light .oauth-btn-github {
+  background: linear-gradient(135deg, #24292e 0%, #1a1e22 100%);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+  padding: 0.625rem;
+  border-radius: 0.5rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  background-color: var(--bg-secondary);
+  transform: scale(1.05);
+}
+
+/* Manual continue prompt */
+.continue-prompt {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.7;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+  }
 }
