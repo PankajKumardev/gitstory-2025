@@ -122,12 +122,16 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.ico', sizes: '48x48', type: 'image/x-icon' },
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/favicon.ico', sizes: '16x16', type: 'image/x-icon' },
     ],
     apple: [
       { url: '/card.png', sizes: '180x180', type: 'image/png' },
     ],
-    shortcut: '/favicon.ico',
+    shortcut: [
+      { url: '/favicon.ico', type: 'image/x-icon' },
+    ],
   },
   alternates: {
     canonical: 'https://gitstory.pankajk.tech',
