@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { fetchUserStory } from '@/services/githubService'
+import { fetchGitLabUserStory } from '@/services/gitlabService'
 import { GitStoryData } from '@/types'
 import { StoryContainer } from '@/components/StoryContainer'
 import { Github, Play, Loader2, AlertCircle, Key, ChevronDown, ChevronUp, Lock, RefreshCw, CheckCircle2, XCircle, Sun, Moon, LogOut } from 'lucide-react'
@@ -90,7 +91,15 @@ export default function Home() {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await fetchUserStory(username.trim(), effectiveToken || undefined)
+      let data: GitStoryData
+      
+      // Use GitLab service if logged in with GitLab
+      if (session?.provider === 'gitlab' && session?.accessToken) {
+        data = await fetchGitLabUserStory(username.trim(), session.accessToken)
+      } else {
+        data = await fetchUserStory(username.trim(), effectiveToken || undefined)
+      }
+      
       setStoryData(data)
       setShowStory(true)
     } catch (err: any) {
@@ -214,10 +223,10 @@ export default function Home() {
           {/* OAuth Buttons - minimal style */}
           <div className="flex items-center justify-center gap-2">
             {session ? (
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm ${isDark ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600'}`}>
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm border ${isDark ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-200 text-neutral-700'}`}>
                 {session.user?.image && <img src={session.user.image} alt="" className="w-5 h-5 rounded-full" />}
                 <span className="font-mono">@{session.username || session.user?.name}</span>
-                <button onClick={() => signOut()} className="ml-1 p-1 rounded hover:bg-red-500/20 text-red-400"><LogOut size={12} /></button>
+                <button onClick={() => signOut()} className={`ml-1 p-1 rounded transition-colors ${isDark ? 'hover:bg-neutral-700 text-neutral-400 hover:text-neutral-200' : 'hover:bg-neutral-200 text-neutral-500 hover:text-neutral-700'}`}><LogOut size={12} /></button>
               </div>
             ) : (
               <>
