@@ -277,12 +277,18 @@ export default function Home() {
                         value={token}
                         onChange={(e) => setToken(e.target.value)}
                         placeholder="ghp_xxxxxxxxxxxx"
-                        className={`w-full bg-neutral-900/30 border rounded-lg px-4 py-3 text-sm font-mono text-center focus:outline-none transition-all placeholder:text-neutral-700 ${
+                        className={`w-full border rounded-lg px-4 py-3 text-sm font-mono text-center focus:outline-none transition-all ${
+                          isDark 
+                            ? 'bg-neutral-900/30 placeholder:text-neutral-600' 
+                            : 'bg-neutral-100 placeholder:text-neutral-400'
+                        } ${
                           tokenStatus === 'valid' 
                             ? 'border-green-500/50 focus:border-green-500 focus:ring-1 focus:ring-green-500' 
                             : tokenStatus === 'invalid'
                             ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
-                            : 'border-neutral-800 focus:border-hero-purple focus:ring-1 focus:ring-hero-purple'
+                            : isDark 
+                              ? 'border-neutral-800 focus:border-hero-purple focus:ring-1 focus:ring-hero-purple'
+                              : 'border-neutral-200 focus:border-hero-blue focus:ring-1 focus:ring-hero-blue'
                         }`}
                       />
                       {/* Token status indicator */}
