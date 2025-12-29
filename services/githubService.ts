@@ -8,7 +8,10 @@ import {
   calculateProductivity 
 } from "./scoringAlgorithms";
 
-const GITHUB_API_BASE = "https://api.github.com";
+// Use server-side proxy to avoid CORS issues in production
+const GITHUB_API_BASE = "/api/github";
+// For constructing proxy URLs
+const makeGitHubUrl = (endpoint: string) => `${GITHUB_API_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
 // Third-party API to get contribution graph
 const CONTRIB_API = "https://github-contributions-api.jogruber.de/v4";
 
@@ -44,7 +47,8 @@ const fetchContributionsWithGraphQL = async (username: string, headers: HeadersI
     `;
 
     try {
-        const response = await fetch('https://api.github.com/graphql', {
+        // Use server-side proxy for GraphQL to avoid CORS
+        const response = await fetch('/api/github', {
             method: 'POST',
             headers: {
                 ...headers,
@@ -108,7 +112,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
 
   try {
     // 1. Fetch Basic User Info first (needed for error handling)
-    const userRes = await fetch(`${GITHUB_API_BASE}/users/${username}`, { headers });
+    const userRes = await fetch(makeGitHubUrl(`/users/${username}`), { headers });
     
     if (userRes.status === 404) {
         throw new Error(`User "${username}" not found. Check the spelling and try again.`);
@@ -144,8 +148,8 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
 
     // Use authenticated endpoint for full repo access (includes org repos) when token is provided
     const reposEndpoint = token
-        ? `${GITHUB_API_BASE}/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member&visibility=all`
-        : `${GITHUB_API_BASE}/users/${username}/repos?per_page=100&sort=pushed&type=all`;
+        ? makeGitHubUrl(`/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member&visibility=all`)
+        : makeGitHubUrl(`/users/${username}/repos?per_page=100&sort=pushed&type=all`);
 
     const [
         reposRes,
@@ -160,13 +164,13 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         // Contributions (GraphQL with token for private, or 3rd party for public)
         contributionsPromise,
         // Recent events for time-of-day
-        fetch(`${GITHUB_API_BASE}/users/${username}/events?per_page=100`, { headers }),
+        fetch(makeGitHubUrl(`/users/${username}/events?per_page=100`), { headers }),
         // PRs authored in 2025
-        fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`, { headers }),
+        fetch(makeGitHubUrl(`/search/issues?q=author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`), { headers }),
         // Issues authored in 2025
-        fetch(`${GITHUB_API_BASE}/search/issues?q=author:${username}+type:issue+created:2025-01-01..2025-12-31&per_page=1`, { headers }),
+        fetch(makeGitHubUrl(`/search/issues?q=author:${username}+type:issue+created:2025-01-01..2025-12-31&per_page=1`), { headers }),
         // PR reviews in 2025
-        fetch(`${GITHUB_API_BASE}/search/issues?q=reviewed-by:${username}+-author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`, { headers })
+        fetch(makeGitHubUrl(`/search/issues?q=reviewed-by:${username}+-author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`), { headers })
     ]);
 
     // Process responses

@@ -29,9 +29,9 @@ export default function Home() {
   const [error, setError] = useState<{ message: string; type: 'rate_limit' | 'not_found' | 'auth' | 'generic' } | null>(null)
   const [starCount, setStarCount] = useState<number | null>(null)
   
-  // Fetch repo stars on mount
+  // Fetch repo stars on mount - use proxy to avoid CORS
   useEffect(() => {
-    fetch('https://api.github.com/repos/pankajkumardev/gitstory-2025')
+    fetch('/api/github?endpoint=' + encodeURIComponent('/repos/pankajkumardev/gitstory-2025'))
       .then(res => res.json())
       .then(data => setStarCount(data.stargazers_count || 0))
       .catch(() => setStarCount(null))
@@ -62,7 +62,8 @@ export default function Home() {
     const validateToken = async () => {
       setTokenStatus('validating')
       try {
-        const res = await fetch('https://api.github.com/user', {
+        // Use proxy to avoid CORS issues
+        const res = await fetch('/api/github?endpoint=' + encodeURIComponent('/user'), {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (res.ok) {
