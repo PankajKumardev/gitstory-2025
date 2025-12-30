@@ -45,26 +45,29 @@ if (typeof setInterval !== 'undefined') {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const endpoint = searchParams.get('endpoint');
+  const url = searchParams.get('url'); // For proxying full URLs like the contributions API
   
-  if (!endpoint) {
-    return NextResponse.json({ error: 'Missing endpoint parameter' }, { status: 400 });
+  if (!endpoint && !url) {
+    return NextResponse.json({ error: 'Missing endpoint or url parameter' }, { status: 400 });
   }
 
-  // User's token takes priority (for private repo access)
+  const targetUrl = url || `${GITHUB_API_BASE}${endpoint}`;
   const userAuthHeader = request.headers.get('Authorization');
   
-  // Cache key - different for authenticated vs public requests
-  const cacheKey = `${endpoint}:${userAuthHeader ? 'auth' : 'public'}`;
+  // Cache key includes the URL and the token (or 'public') 
+  // This ensures User A doesn't see User B's private data cache
+  const cacheKey = `${targetUrl}:${userAuthHeader || 'public'}`;
   
-  // Check cache first (only for public/unauthenticated requests)
-  if (!userAuthHeader) {
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return NextResponse.json(cached.data, { 
-        status: cached.status,
-        headers: { 'X-Cache': 'HIT', 'X-Tokens-Available': String(GITHUB_TOKENS.length) }
-      });
-    }
+  // Check cache
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(cached.data, { 
+      status: cached.status,
+      headers: { 
+        'X-Cache': 'HIT', 
+        'X-Tokens-Available': String(GITHUB_TOKENS.length) 
+      }
+    });
   }
   
   const headers: HeadersInit = {
@@ -72,41 +75,37 @@ export async function GET(request: NextRequest) {
     'User-Agent': 'GitStory-2025',
   };
   
-  // Priority: User token > Rotated server tokens
-  if (userAuthHeader) {
-    headers['Authorization'] = userAuthHeader;
-  } else {
-    const serverToken = getNextToken();
-    if (serverToken) {
-      headers['Authorization'] = `Bearer ${serverToken}`;
+  // Only apply GitHub tokens if we are calling GitHub
+  if (targetUrl.includes('api.github.com')) {
+    if (userAuthHeader) {
+      headers['Authorization'] = userAuthHeader;
+    } else {
+      const serverToken = getNextToken();
+      if (serverToken) {
+        headers['Authorization'] = `Bearer ${serverToken}`;
+      }
     }
   }
 
   try {
-    const response = await fetch(`${GITHUB_API_BASE}${endpoint}`, { headers });
+    const response = await fetch(targetUrl, { headers });
     const data = await response.json();
     
-    // Cache successful public responses
-    if (response.ok && !userAuthHeader) {
+    // Cache successful responses
+    if (response.ok) {
       cache.set(cacheKey, { data, status: response.status, timestamp: Date.now() });
     }
-    
-    // Forward rate limit headers for debugging
-    const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
-    const rateLimitReset = response.headers.get('X-RateLimit-Reset');
     
     return NextResponse.json(data, { 
       status: response.status,
       headers: {
-        'X-RateLimit-Remaining': rateLimitRemaining || '',
-        'X-RateLimit-Reset': rateLimitReset || '',
         'X-Cache': 'MISS',
         'X-Tokens-Available': String(GITHUB_TOKENS.length),
       }
     });
   } catch (error) {
-    console.error('GitHub API proxy error:', error);
-    return NextResponse.json({ error: 'Failed to fetch from GitHub' }, { status: 500 });
+    console.error('Proxy error:', error);
+    return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 });
   }
 }
 

@@ -142,9 +142,10 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     };
     
     // Use GraphQL for contributions when token is provided (includes private contributions)
+    // Otherwise use proxied contribution API for caching
     const contributionsPromise: Promise<ContribData> = token 
         ? fetchContributionsWithGraphQL(username, headers)
-        : fetch(`${CONTRIB_API}/${username}?y=2025`).then(res => res.ok ? res.json() : { contributions: [], total: {} });
+        : fetch(`/api/github?url=${encodeURIComponent(`${CONTRIB_API}/${username}?y=2025`)}`).then(res => res.ok ? res.json() : { contributions: [], total: {} });
 
     // Use authenticated endpoint for full repo access (includes org repos) when token is provided
     const reposEndpoint = token
