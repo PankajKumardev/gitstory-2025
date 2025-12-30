@@ -5,9 +5,42 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 
-// Server-side token for higher rate limits (5000/hr instead of 60/hr)
-// Users can still provide their own token for private repo access
-const SERVER_GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+// Multiple tokens for higher rate limits - each token = 5000 req/hr
+// Add GITHUB_TOKEN_2, GITHUB_TOKEN_3, etc. in Vercel env vars to scale
+const GITHUB_TOKENS = [
+  process.env.GITHUB_TOKEN,
+  process.env.GITHUB_TOKEN_2,
+  process.env.GITHUB_TOKEN_3,
+  process.env.GITHUB_TOKEN_4,
+].filter(Boolean) as string[];
+
+// Round-robin token rotation
+let tokenIndex = 0;
+const getNextToken = (): string | undefined => {
+  if (GITHUB_TOKENS.length === 0) return undefined;
+  const token = GITHUB_TOKENS[tokenIndex];
+  tokenIndex = (tokenIndex + 1) % GITHUB_TOKENS.length;
+  return token;
+};
+
+// Cache configuration - 5 min cache for same endpoints
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const cache = new Map<string, { data: any; status: number; timestamp: number }>();
+
+// Clean expired cache entries periodically  
+const cleanExpiredCache = () => {
+  const now = Date.now();
+  for (const [key, value] of cache.entries()) {
+    if (now - value.timestamp > CACHE_TTL_MS) {
+      cache.delete(key);
+    }
+  }
+};
+
+// Run cleanup every 2 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(cleanExpiredCache, 2 * 60 * 1000);
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -18,24 +51,45 @@ export async function GET(request: NextRequest) {
   }
 
   // User's token takes priority (for private repo access)
-  // Falls back to server token for rate limit boost
   const userAuthHeader = request.headers.get('Authorization');
+  
+  // Cache key - different for authenticated vs public requests
+  const cacheKey = `${endpoint}:${userAuthHeader ? 'auth' : 'public'}`;
+  
+  // Check cache first (only for public/unauthenticated requests)
+  if (!userAuthHeader) {
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return NextResponse.json(cached.data, { 
+        status: cached.status,
+        headers: { 'X-Cache': 'HIT', 'X-Tokens-Available': String(GITHUB_TOKENS.length) }
+      });
+    }
+  }
   
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json',
     'User-Agent': 'GitStory-2025',
   };
   
-  // Priority: User token > Server token
+  // Priority: User token > Rotated server tokens
   if (userAuthHeader) {
     headers['Authorization'] = userAuthHeader;
-  } else if (SERVER_GITHUB_TOKEN) {
-    headers['Authorization'] = `Bearer ${SERVER_GITHUB_TOKEN}`;
+  } else {
+    const serverToken = getNextToken();
+    if (serverToken) {
+      headers['Authorization'] = `Bearer ${serverToken}`;
+    }
   }
 
   try {
     const response = await fetch(`${GITHUB_API_BASE}${endpoint}`, { headers });
     const data = await response.json();
+    
+    // Cache successful public responses
+    if (response.ok && !userAuthHeader) {
+      cache.set(cacheKey, { data, status: response.status, timestamp: Date.now() });
+    }
     
     // Forward rate limit headers for debugging
     const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
@@ -46,6 +100,8 @@ export async function GET(request: NextRequest) {
       headers: {
         'X-RateLimit-Remaining': rateLimitRemaining || '',
         'X-RateLimit-Reset': rateLimitReset || '',
+        'X-Cache': 'MISS',
+        'X-Tokens-Available': String(GITHUB_TOKENS.length),
       }
     });
   } catch (error) {
