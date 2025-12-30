@@ -29,15 +29,23 @@ export const fetchGitLabUserStory = async (username: string, token: string): Pro
     const user = await userRes.json();
 
     // 2. Fetch all data in parallel
-    const [projectsRes, eventsRes] = await Promise.all([
+    // Fetch 3 pages of events (300 total) to cover more history/private contribs
+    const [projectsRes, eventsRes1, eventsRes2, eventsRes3] = await Promise.all([
       // User's projects (repositories)
       fetch(`${GITLAB_API_BASE}/users/${user.id}/projects?per_page=100&order_by=last_activity_at`, { headers }),
-      // User's events for contributions
-      fetch(`${GITLAB_API_BASE}/users/${user.id}/events?per_page=100&after=2025-01-01`, { headers }),
+      // User's events - Pages 1-3
+      fetch(`${GITLAB_API_BASE}/users/${user.id}/events?per_page=100&after=2025-01-01&page=1`, { headers }),
+      fetch(`${GITLAB_API_BASE}/users/${user.id}/events?per_page=100&after=2025-01-01&page=2`, { headers }),
+      fetch(`${GITLAB_API_BASE}/users/${user.id}/events?per_page=100&after=2025-01-01&page=3`, { headers }),
     ]);
 
     const projects = projectsRes.ok ? await projectsRes.json() : [];
-    const events = eventsRes.ok ? await eventsRes.json() : [];
+    
+    // Combine events
+    const e1 = eventsRes1.ok ? await eventsRes1.json() : [];
+    const e2 = eventsRes2.ok ? await eventsRes2.json() : [];
+    const e3 = eventsRes3.ok ? await eventsRes3.json() : [];
+    const events = [...(Array.isArray(e1) ? e1 : []), ...(Array.isArray(e2) ? e2 : []), ...(Array.isArray(e3) ? e3 : [])];
 
     // --- Process Data ---
 
