@@ -306,7 +306,6 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       "D": "#ba595e", "Vala": "#a56de2", "Hack": "#878787", "ActionScript": "#882B0F"
     };
 
-    let bestRepo: any = null;
     let totalStars = 0;
 
     // Score all repos and collect stats
@@ -321,12 +320,65 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         });
     }
 
-    // Sort by score and get top 5
+    // Sort by score and get top 5 (only repos owned by the user)
     repoScores.sort((a, b) => b.score - a.score);
-    const topCandidates = repoScores.slice(0, 5);
     
-    // Best repo is the highest scoring
-    bestRepo = topCandidates[0]?.repo || null;
+    // Filter to only include repos owned by the user (not org repos)
+    // This prevents showing repos like OWASP/mastg where user has access but isn't owner
+    const ownedRepoScores = repoScores.filter(r => 
+      r.repo.owner?.login?.toLowerCase() === username.toLowerCase()
+    );
+    
+    const topCandidates = ownedRepoScores.slice(0, 5);
+    
+    // Check ALL candidates for 2025 commits, then pick highest-starred among those
+    // This combines 2025 activity requirement with star-based ranking
+    const candidatesWithCommits: { repo: any; score: number }[] = [];
+    
+    for (const candidate of topCandidates) {
+      try {
+        const repoOwner = candidate.repo.owner?.login || username;
+        const commitsRes = await fetch(
+          makeGitHubUrl(`/repos/${repoOwner}/${candidate.repo.name}/commits?author=${username}&since=2025-01-01T00:00:00Z&per_page=1`),
+          { headers }
+        );
+        
+        if (commitsRes.ok) {
+          const commits = await commitsRes.json();
+          if (Array.isArray(commits) && commits.length > 0) {
+            candidatesWithCommits.push(candidate);
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to check commits for ${candidate.repo.name}:`, e);
+      }
+    }
+    
+    // Pick highest-starred repo among those with 2025 commits
+    let bestRepo: any = null;
+    if (candidatesWithCommits.length > 0) {
+      // Sort by stars (highest first) among repos with 2025 commits
+      candidatesWithCommits.sort((a, b) => 
+        (b.repo.stargazers_count || 0) - (a.repo.stargazers_count || 0)
+      );
+      bestRepo = candidatesWithCommits[0].repo;
+    }
+    
+    // Fallback: if no repo with push activity, prefer repos owned by the user
+    // This prevents org repos (like OWASP/mastg) from being selected when user has no commits
+    if (!bestRepo && topCandidates.length > 0) {
+      // First try to find a repo owned by the user
+      const ownedRepo = topCandidates.find(c => 
+        c.repo.owner?.login?.toLowerCase() === username.toLowerCase()
+      );
+      
+      if (ownedRepo) {
+        bestRepo = ownedRepo.repo;
+      } else {
+        // Last resort: use highest scored (even if org repo)
+        bestRepo = topCandidates[0].repo;
+      }
+    }
 
     // Calculate language scores using modular function
     const langScoreMap = calculateLanguageScores(repos);
@@ -381,15 +433,36 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       url: ""
     };
 
-    // Build top 5 repos array
-    const topRepos: Repository[] = topCandidates.slice(0, 5).map(c => ({
-      name: c.repo.name,
-      description: c.repo.description || "No description provided.",
-      stars: c.repo.stargazers_count,
-      language: c.repo.language || "Unknown",
-      topics: c.repo.topics || [],
-      url: c.repo.html_url
-    }));
+    // Build top 5 repos array with bestRepo first (so trophy appears on verified best)
+    const topRepos: Repository[] = [];
+    
+    // Add bestRepo first (the verified top project)
+    if (bestRepo) {
+      topRepos.push({
+        name: bestRepo.name,
+        description: bestRepo.description || "No description provided.",
+        stars: bestRepo.stargazers_count,
+        language: bestRepo.language || "Unknown",
+        topics: bestRepo.topics || [],
+        url: bestRepo.html_url
+      });
+    }
+    
+    // Add remaining candidates (skip bestRepo to avoid duplicates)
+    for (const c of topCandidates) {
+      if (topRepos.length >= 5) break;
+      if (bestRepo && c.repo.name === bestRepo.name && c.repo.owner?.login === bestRepo.owner?.login) {
+        continue; // Skip bestRepo as it's already first
+      }
+      topRepos.push({
+        name: c.repo.name,
+        description: c.repo.description || "No description provided.",
+        stars: c.repo.stargazers_count,
+        language: c.repo.language || "Unknown",
+        topics: c.repo.topics || [],
+        url: c.repo.html_url
+      });
+    }
 
     // D. Productivity
     const productivity = calculateProductivity(hourCounts);

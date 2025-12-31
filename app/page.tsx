@@ -10,7 +10,6 @@ import { Github, Play, Loader2, AlertCircle, Key, ChevronDown, ChevronUp, Lock, 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from '@/context/ThemeContext'
 
-// GitLab icon
 const GitLabIcon = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="#fc6d26">
     <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 01-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 014.82 2a.43.43 0 01.58 0 .42.42 0 01.11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0118.6 2a.43.43 0 01.58 0 .42.42 0 01.11.18l2.44 7.51L23 13.45a.84.84 0 01-.35.94z"/>
@@ -29,7 +28,6 @@ export default function Home() {
   const [error, setError] = useState<{ message: string; type: 'rate_limit' | 'not_found' | 'auth' | 'generic' } | null>(null)
   const [starCount, setStarCount] = useState<number | null>(null)
   
-  // Fetch repo stars on mount - use proxy to avoid CORS
   useEffect(() => {
     fetch('/api/github?endpoint=' + encodeURIComponent('/repos/pankajkumardev/gitstory-2025'))
       .then(res => res.json())
@@ -37,21 +35,17 @@ export default function Home() {
       .catch(() => setStarCount(null))
   }, [])
   
-  // Use OAuth token if available, otherwise use manual token
   const effectiveToken = session?.accessToken || token.trim()
   
-  // Token validation state
   const [tokenStatus, setTokenStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle')
   const [tokenUser, setTokenUser] = useState<{ login: string; avatar_url: string } | null>(null)
 
-  // Auto-fill username from OAuth session
   useEffect(() => {
     if (session?.username && !username) {
       setUsername(session.username)
     }
   }, [session?.username, username])
 
-  // Validate manual token when it changes
   useEffect(() => {
     if (session?.accessToken || !token || token.length < 10) {
       setTokenStatus('idle')
@@ -62,7 +56,6 @@ export default function Home() {
     const validateToken = async () => {
       setTokenStatus('validating')
       try {
-        // Use proxy to avoid CORS issues
         const res = await fetch('/api/github?endpoint=' + encodeURIComponent('/user'), {
           headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -94,7 +87,6 @@ export default function Home() {
     try {
       let data: GitStoryData
       
-      // Use GitLab service if logged in with GitLab
       if (session?.provider === 'gitlab' && session?.accessToken) {
         data = await fetchGitLabUserStory(username.trim(), session.accessToken)
       } else {
@@ -106,7 +98,6 @@ export default function Home() {
     } catch (err: any) {
       console.error(err)
       
-      // Parse error type for better UX
       const errorMessage = err.message || "Failed to generate story."
       let errorType: 'rate_limit' | 'not_found' | 'auth' | 'generic' = 'generic'
       
@@ -171,7 +162,6 @@ export default function Home() {
 
   return (
     <div className={`min-h-[100dvh] flex flex-col items-center justify-center p-6 overflow-hidden relative transition-colors duration-300 ${isDark ? 'bg-black text-white' : 'bg-white text-black'}`}>
-      {/* Top Bar - Theme Toggle & Star Repo */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
         <a
           href="https://github.com/pankajkumardev/gitstory-2025"
@@ -221,7 +211,6 @@ export default function Home() {
             />
           </div>
 
-          {/* OAuth Buttons - minimal style */}
           <div className="flex items-center justify-center gap-2">
             {session ? (
               <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm border ${isDark ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-200 text-neutral-700'}`}>
@@ -250,7 +239,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* Optional Token Section - only show if not OAuth'd */}
           {!session && (
           <div>
             <button
@@ -306,7 +294,6 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    {/* Auth status badge */}
                     <AnimatePresence>
                       {tokenStatus === 'valid' && tokenUser && (
                         <motion.div
