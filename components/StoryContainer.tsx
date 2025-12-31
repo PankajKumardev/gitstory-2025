@@ -32,7 +32,6 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
   const progressIntervalRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
   
-  // Check if we're on the last slide (PosterSlide)
   const isLastSlide = currentSlide === SlideType.POSTER;
 
   const handleNext = useCallback(() => {
@@ -51,9 +50,7 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
     }
   }, [currentSlide]);
 
-  // Timer Logic - PAUSED on last slide
   useEffect(() => {
-    // Don't auto-progress on the last slide (PosterSlide)
     if (isPaused || isLastSlide) return;
 
     const startTime = Date.now();
@@ -79,20 +76,19 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
     };
   }, [currentSlide, isPaused, handleNext, isLastSlide]);
 
-  // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
         case 'ArrowRight':
         case 'd':
-        case 'Enter': // Added Enter key for last slide
+        case 'Enter':
           handleNext();
           break;
         case 'ArrowLeft':
         case 'a':
           handlePrev();
           break;
-        case ' ': // Space to pause/resume (or exit on last slide)
+        case ' ':
           e.preventDefault();
           if (isLastSlide) {
             onComplete();
@@ -110,23 +106,19 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNext, handlePrev, onComplete, isLastSlide]);
 
-  // Gestures
   const touchStartX = useRef(0);
   const longPressTimer = useRef<number | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    // Ignore interaction if clicking a button/interactive element
     if ((e.target as HTMLElement).closest('button, a, input')) return;
 
     touchStartX.current = e.clientX;
     
-    // Don't pause on last slide since it's already stopped
     if (!isLastSlide) {
       setIsPaused(true);
     }
     
     longPressTimer.current = window.setTimeout(() => {
-      // Long press logic handled by setting paused to true immediately
     }, 200);
   };
 
@@ -137,13 +129,11 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
       setIsPaused(false);
     }
 
-    // Ignore interaction if clicking a button/interactive element
     if ((e.target as HTMLElement).closest('button, a, input')) return;
 
     const diff = e.clientX - touchStartX.current;
     
     if (Math.abs(diff) < 10) {
-      // It's a tap
       const screenWidth = window.innerWidth;
       if (e.clientX < screenWidth / 3) {
         handlePrev();
@@ -177,7 +167,6 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
       onPointerUp={handlePointerUp}
       onPointerLeave={() => !isLastSlide && setIsPaused(false)}
     >
-      {/* Progress Bar */}
       <div className="absolute top-4 left-2 right-2 flex gap-1 z-50">
         {Array.from({ length: totalSlides }).map((_, idx) => (
           <div key={idx} className={`h-1 flex-1 rounded-full overflow-hidden ${isDark ? 'bg-neutral-800' : 'bg-neutral-300'}`}>
@@ -191,7 +180,6 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
         ))}
       </div>
 
-      {/* Control Buttons - Right Side */}
       <div className="absolute top-8 right-4 z-50 flex items-center gap-1">
         {!isLastSlide && (
           <button
@@ -218,7 +206,6 @@ export const StoryContainer: React.FC<StoryContainerProps> = ({ data, onComplete
         </button>
       </div>
 
-      {/* Slide Content */}
       <AnimatePresence mode="popLayout" initial={false}>
         <div key={currentSlide} className="w-full h-full">
           {renderSlide()}

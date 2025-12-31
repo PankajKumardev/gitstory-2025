@@ -5,7 +5,6 @@ import { SessionProvider } from '@/components/providers/SessionProvider'
 import { ThemeProvider } from '@/context/ThemeContext'
 import './globals.css'
 
-// Configure fonts using Next.js font optimization
 const instrumentSerif = Instrument_Serif({
   weight: '400',
   style: ['normal', 'italic'],
@@ -35,14 +34,12 @@ export const metadata: Metadata = {
   title: 'GitStory 2025 - Your Year in Code | GitHub Wrapped',
   description: 'Relive your coding journey with GitStory 2025. Transform your GitHub contributions into a stunning cinematic experience with beautiful animations and personalized insights. Your GitHub Wrapped for 2025!',
   keywords: [
-    // Primary keywords
     'GitStory',
     'Git Story',
     'GitHub Wrapped',
     'GitHub Wrapped 2025',
     'Git Wrapped',
     'Git Wrapped 2025',
-    // Feature keywords
     'GitHub Year in Review',
     'GitHub Stats',
     'GitHub Statistics',
@@ -51,7 +48,6 @@ export const metadata: Metadata = {
     'GitHub Profile Stats',
     'GitHub Activity',
     'GitHub Summary',
-    // Comparison/alternative keywords
     'Spotify Wrapped for GitHub',
     'GitHub Recap',
     'GitHub Rewind',
@@ -59,13 +55,11 @@ export const metadata: Metadata = {
     'Coder Wrapped',
     'Code Wrapped',
     'Coding Year Review',
-    // Action keywords
     'GitHub Visualization',
     'Code Visualization',
     'Contribution Graph',
     'Commit History',
     'Programming Stats',
-    // Long-tail keywords
     'Year in Code 2025',
     'Developer Year Review',
     'GitHub Profile Wrapped',
@@ -146,7 +140,6 @@ export const viewport: Viewport = {
   themeColor: '#0a0a0a',
 }
 
-// JSON-LD structured data for rich snippets
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
@@ -186,14 +179,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${instrumentSerif.variable} ${interTight.variable} ${spaceMono.variable}`}>
       <head>
-        {/* Manifest for PWA */}
         <link rel="manifest" href="/manifest.json" />
-        {/* JSON-LD structured data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {/* Prevent flash of wrong theme */}
         <script
           dangerouslySetInnerHTML={{
             __html: `

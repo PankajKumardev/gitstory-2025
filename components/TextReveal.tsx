@@ -7,11 +7,10 @@ interface TextRevealProps {
   text: string;
   className?: string;
   delay?: number;
-  highlight?: string; // Word to highlight in yellow/blue
+  highlight?: string;
 }
 
 export const TextReveal: React.FC<TextRevealProps> = ({ text, className = "", delay = 0, highlight }) => {
-  // Split by words
   const words = text.split(" ");
 
   const container: Variants = {

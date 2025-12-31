@@ -15,13 +15,12 @@ export const RoutineSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
   
   const maxVal = Math.max(...data.weekdayStats);
   const maxIndex = data.weekdayStats.indexOf(maxVal);
-  const maxHeight = 180; // Max bar height in pixels
+  const maxHeight = 180;
 
   return (
     <SlideLayout gradientStart="#374151" gradientEnd="#111827">
       <div className="flex-1 flex flex-col items-center justify-center">
         
-        {/* Heading */}
         <div className="mb-10 text-center">
           <TextReveal 
             text="Your favorite day?" 
@@ -34,16 +33,14 @@ export const RoutineSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
           />
         </div>
 
-        {/* Bar Chart */}
         <div className="flex items-end justify-center gap-3 md:gap-6 w-full max-w-xl px-4">
           {data.weekdayStats.map((count, index) => {
             const heightPercentage = maxVal > 0 ? count / maxVal : 0;
-            const barHeight = Math.max(heightPercentage * maxHeight, 30); // Min 30px
+            const barHeight = Math.max(heightPercentage * maxHeight, 30);
             const isMax = index === maxIndex;
 
             return (
               <div key={index} className="flex flex-col items-center gap-3 flex-1">
-                {/* Bar */}
                 <motion.div
                   initial={{ height: 0 }}
                   animate={{ height: barHeight }}
@@ -63,7 +60,6 @@ export const RoutineSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
                       : 'none'
                   }}
                 />
-                {/* Day Label */}
                 <motion.span 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -81,7 +77,6 @@ export const RoutineSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
           })}
         </div>
 
-        {/* Bottom Text */}
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

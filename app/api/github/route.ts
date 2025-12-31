@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Server-side GitHub API proxy to avoid CORS issues
-// This runs on the server, not in the browser
-
 const GITHUB_API_BASE = 'https://api.github.com';
 
-// Multiple tokens for higher rate limits - each token = 5000 req/hr
-// Add GITHUB_TOKEN_2, GITHUB_TOKEN_3, etc. in Vercel env vars to scale
 const GITHUB_TOKENS = [
   process.env.GITHUB_TOKEN,
   process.env.GITHUB_TOKEN_2,
@@ -14,7 +9,6 @@ const GITHUB_TOKENS = [
   process.env.GITHUB_TOKEN_4,
 ].filter(Boolean) as string[];
 
-// Round-robin token rotation
 let tokenIndex = 0;
 const getNextToken = (): string | undefined => {
   if (GITHUB_TOKENS.length === 0) return undefined;
@@ -23,11 +17,9 @@ const getNextToken = (): string | undefined => {
   return token;
 };
 
-// Cache configuration - 5 min cache for same endpoints
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map<string, { data: any; status: number; timestamp: number }>();
 
-// Clean expired cache entries periodically  
 const cleanExpiredCache = () => {
   const now = Date.now();
   for (const [key, value] of cache.entries()) {
@@ -37,7 +29,6 @@ const cleanExpiredCache = () => {
   }
 };
 
-// Run cleanup every 2 minutes
 if (typeof setInterval !== 'undefined') {
   setInterval(cleanExpiredCache, 2 * 60 * 1000);
 }
@@ -45,7 +36,7 @@ if (typeof setInterval !== 'undefined') {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const endpoint = searchParams.get('endpoint');
-  const url = searchParams.get('url'); // For proxying full URLs like the contributions API
+  const url = searchParams.get('url');
   
   if (!endpoint && !url) {
     return NextResponse.json({ error: 'Missing endpoint or url parameter' }, { status: 400 });
@@ -54,11 +45,8 @@ export async function GET(request: NextRequest) {
   const targetUrl = url || `${GITHUB_API_BASE}${endpoint}`;
   const userAuthHeader = request.headers.get('Authorization');
   
-  // Cache key includes the URL and the token (or 'public') 
-  // This ensures User A doesn't see User B's private data cache
   const cacheKey = `${targetUrl}:${userAuthHeader || 'public'}`;
   
-  // Check cache
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return NextResponse.json(cached.data, { 
@@ -75,7 +63,6 @@ export async function GET(request: NextRequest) {
     'User-Agent': 'GitStory-2025',
   };
   
-  // Only apply GitHub tokens if we are calling GitHub
   if (targetUrl.includes('api.github.com')) {
     if (userAuthHeader) {
       headers['Authorization'] = userAuthHeader;
@@ -91,7 +78,6 @@ export async function GET(request: NextRequest) {
     const response = await fetch(targetUrl, { headers });
     const data = await response.json();
     
-    // Cache successful responses
     if (response.ok) {
       cache.set(cacheKey, { data, status: response.status, timestamp: Date.now() });
     }

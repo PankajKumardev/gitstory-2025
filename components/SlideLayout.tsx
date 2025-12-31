@@ -22,7 +22,6 @@ export const SlideLayout: React.FC<SlideLayoutProps> = ({ children, gradientStar
       exit={{ scale: 0.9, opacity: 0, filter: "brightness(0.5)", transition: { duration: 0.6 } }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
-      {/* Dynamic Background */}
       <div className={`absolute inset-0 z-0 pointer-events-none ${isDark ? 'opacity-20' : 'opacity-20'}`}>
          <motion.div 
            animate={{ rotate: 360 }}

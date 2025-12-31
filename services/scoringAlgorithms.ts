@@ -1,8 +1,3 @@
-/**
- * Scoring and calculation algorithms for GitStory
- * All scoring logic is centralized here for easy modification
- */
-
 export const SCORING_CONFIG = {
   language: {
     baseWeight: 1,           
@@ -84,12 +79,6 @@ export function calculateLanguageScores(repos: any[]): Map<string, LanguageScore
       score.weight += extraRepos * diversityBonus;
     }
   });
-  langMap.forEach((score) => {
-    if (score.repoCount >= diversityThreshold) {
-      const extraRepos = score.repoCount - diversityThreshold;
-      score.weight += extraRepos * diversityBonus;
-    }
-  });
   
   return langMap;
 }
@@ -118,7 +107,7 @@ export function calculateRepoScore(repo: any): number {
   
   const pushedAt = new Date(repo.pushed_at);
   if (pushedAt >= year2025Start && config.recency.maxPoints > 0) {
-    score += config.recency.maxPoints; // Full points if pushed in 2025
+    score += config.recency.maxPoints;
   }
   
   if (!repo.fork) {
@@ -180,7 +169,7 @@ export function calculateArchetype(
   const reviewPercentage = totalActivity > 0 ? (breakdown.reviews / totalActivity) * 100 : 0;
   const issuePercentage = totalActivity > 0 ? (breakdown.issues / totalActivity) * 100 : 0;
   
-  const weekendCommits = weekdayStats[0] + weekdayStats[6]; // Sunday + Saturday
+  const weekendCommits = weekdayStats[0] + weekdayStats[6];
   const totalWeekCommits = weekdayStats.reduce((a, b) => a + b, 0);
   const weekendPercentage = totalWeekCommits > 0 ? (weekendCommits / totalWeekCommits) * 100 : 0;
   

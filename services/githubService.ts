@@ -8,16 +8,12 @@ import {
   calculateProductivity 
 } from "./scoringAlgorithms";
 
-// Use server-side proxy to avoid CORS issues in production
 const GITHUB_API_BASE = "/api/github";
-// For constructing proxy URLs
 const makeGitHubUrl = (endpoint: string) => `${GITHUB_API_BASE}?endpoint=${encodeURIComponent(endpoint)}`;
-// Third-party API to get contribution graph
 const CONTRIB_API = "https://github-contributions-api.jogruber.de/v4";
 
 
-// Fetch contributions + stats using GitHub GraphQL API (includes private contributions when authenticated)
-// This single call replaces: contributions API + 3 separate search API calls = saves 3 API calls!
+
 const fetchContributionsWithGraphQL = async (username: string, headers: HeadersInit): Promise<{
     contributions: { date: string; count: number }[];
     total: Record<string, number>;
@@ -47,7 +43,6 @@ const fetchContributionsWithGraphQL = async (username: string, headers: HeadersI
     `;
 
     try {
-        // Use server-side proxy for GraphQL to avoid CORS
         const response = await fetch('/api/github', {
             method: 'POST',
             headers: {
@@ -69,7 +64,7 @@ const fetchContributionsWithGraphQL = async (username: string, headers: HeadersI
             return { contributions: [], total: {}, prCount: -1, issueCount: -1, reviewCount: -1 };
         }
 
-        // Transform GraphQL response to match the format expected by the rest of the code
+
         const collection = data.data?.user?.contributionsCollection;
         const calendar = collection?.contributionCalendar;
         if (!calendar) return { contributions: [], total: {}, prCount: -1, issueCount: -1, reviewCount: -1 };
@@ -102,7 +97,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       return new Promise((resolve) => setTimeout(() => resolve(MOCK_DATA), 1500));
   }
 
-  // Create headers with optional auth token
+
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json',
   };
@@ -111,7 +106,6 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
   }
 
   try {
-    // 1. Fetch Basic User Info first (needed for error handling)
     const userRes = await fetch(makeGitHubUrl(`/users/${username}`), { headers });
     
     if (userRes.status === 404) {
@@ -131,8 +125,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     
     const user = await userRes.json();
 
-    // 2. Fire all remaining API calls in PARALLEL for speed ⚡
-    // Define contribution data type for proper typing
+
     type ContribData = {
         contributions: { date: string; count: number }[];
         total: Record<string, number>;
@@ -141,13 +134,12 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         reviewCount?: number;
     };
     
-    // Use GraphQL for contributions when token is provided (includes private contributions)
-    // Otherwise use proxied contribution API for caching
+
     const contributionsPromise: Promise<ContribData> = token 
         ? fetchContributionsWithGraphQL(username, headers)
         : fetch(`/api/github?url=${encodeURIComponent(`${CONTRIB_API}/${username}?y=2025`)}`).then(res => res.ok ? res.json() : { contributions: [], total: {} });
 
-    // Use authenticated endpoint for full repo access (includes org repos) when token is provided
+
     const reposEndpoint = token
         ? makeGitHubUrl(`/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator,organization_member&visibility=all`)
         : makeGitHubUrl(`/users/${username}/repos?per_page=100&sort=pushed&type=all`);
@@ -160,29 +152,20 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         issueSearchRes,
         reviewSearchRes
     ] = await Promise.all([
-        // Repositories (authenticated endpoint includes org repos)
         fetch(reposEndpoint, { headers }),
-        // Contributions (GraphQL with token for private, or 3rd party for public)
         contributionsPromise,
-        // Recent events for time-of-day
         fetch(makeGitHubUrl(`/users/${username}/events?per_page=100`), { headers }),
-        // PRs authored in 2025
         fetch(makeGitHubUrl(`/search/issues?q=author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`), { headers }),
-        // Issues authored in 2025
         fetch(makeGitHubUrl(`/search/issues?q=author:${username}+type:issue+created:2025-01-01..2025-12-31&per_page=1`), { headers }),
-        // PR reviews in 2025
         fetch(makeGitHubUrl(`/search/issues?q=reviewed-by:${username}+-author:${username}+type:pr+created:2025-01-01..2025-12-31&per_page=1`), { headers })
     ]);
 
-    // Process responses
     let repos: any[] = [];
     if (reposRes.ok) {
         repos = await reposRes.json();
     } else {
         console.warn(`Failed to fetch repos: ${reposRes.status}`);
     }
-
-    // contribData is already resolved from Promise.all (either GraphQL or 3rd party)
 
     const events = eventsRes.ok ? await eventsRes.json() : [];
 
@@ -204,14 +187,11 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         reviewCount = reviewData.total_count || 0;
     }
 
-    // --- Process Data ---
-
-    // A. Velocity & Commits
     const velocityData: { date: string; commits: number }[] = [];
     let totalCommits = 0;
     let currentStreak = 0;
     let maxStreak = 0;
-    const weekdayStats = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+    const weekdayStats = [0, 0, 0, 0, 0, 0, 0];
     
     const yearData = contribData.contributions || [];
     yearData.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -240,7 +220,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     const maxDayIndex = weekdayStats.indexOf(Math.max(...weekdayStats));
     const busiestDay = days[maxDayIndex];
 
-    // B. Analyze Events for Time-of-day analysis only
+
     const hourCounts: Record<number, number> = {};
 
     if (Array.isArray(events)) {
@@ -251,7 +231,7 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         });
     }
 
-    // Use accurate counts from Search API
+
     const contributionBreakdown: ContributionBreakdown = {
         commits: totalCommits,
         prs: prCount,
@@ -259,45 +239,23 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         reviews: reviewCount,
     };
 
-    // C. Top Languages & Community Stars
-    const langMap: Record<string, number> = {};
-    // Extended language color palette (50+ languages with official GitHub colors)
     const langColors: Record<string, string> = {
-      // Web & Frontend
       "TypeScript": "#3178C6", "JavaScript": "#F7DF1E", "HTML": "#e34c26", 
       "CSS": "#563d7c", "Vue": "#41b883", "Svelte": "#ff3e00", "SCSS": "#c6538c",
       "Less": "#1d365d", "Astro": "#ff5a03", "MDX": "#1b1f24",
-      
-      // Systems & Low-level
       "Rust": "#dea584", "C": "#555555", "C++": "#f34b7d", "C#": "#178600",
       "Go": "#00ADD8", "Zig": "#f7a41d", "Assembly": "#6E4C13", "Objective-C": "#438eff",
-      
-      // JVM & Enterprise
       "Java": "#b07219", "Kotlin": "#A97BFF", "Scala": "#c22d40", "Groovy": "#4298b8",
       "Clojure": "#db5855",
-      
-      // Scripting & Dynamic
       "Python": "#3572A5", "Ruby": "#701516", "PHP": "#4F5D95", "Perl": "#0298c3",
       "Lua": "#000080", "R": "#198CE7", "Julia": "#a270ba", "Elixir": "#6e4a7e",
       "Erlang": "#B83998", "Haskell": "#5e5086", "OCaml": "#3be133",
-      
-      // Mobile
       "Swift": "#F05138", "Dart": "#00B4AB", "Objective-C++": "#6866fb",
-      
-      // Data & ML
       "Jupyter Notebook": "#DA5B0B", "MATLAB": "#e16737", "SAS": "#B34936",
-      
-      // Shell & Config
       "Shell": "#89e051", "PowerShell": "#012456", "Dockerfile": "#384d54",
       "Makefile": "#427819", "Nix": "#7e7eff", "HCL": "#844fba",
-      
-      // Query & Data
       "SQL": "#e38c00", "PLpgSQL": "#336790", "TSQL": "#e38c00", "GraphQL": "#e10098",
-      
-      // Markup & Docs
       "Markdown": "#083fa1", "TeX": "#3D6117", "Org": "#77aa99",
-      
-      // Other Popular
       "F#": "#b845fc", "Crystal": "#000100", "Nim": "#ffc200", "V": "#4f87c4",
       "Solidity": "#AA6746", "Move": "#4a137a", "Cairo": "#ff4c00",
       "WASM": "#654ff0", "WebAssembly": "#654ff0", "CoffeeScript": "#244776",
@@ -308,31 +266,34 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
 
     let totalStars = 0;
 
-    // Score all repos and collect stats
     const repoScores: { repo: any; score: number }[] = [];
     
     if (Array.isArray(repos)) {
         repos.forEach((repo: any) => {
           totalStars += repo.stargazers_count;
-          // Calculate score using modular function
           const repoScore = calculateRepoScore(repo);
           repoScores.push({ repo, score: repoScore });
         });
     }
 
-    // Sort by score and get top 5 (only repos owned by the user)
     repoScores.sort((a, b) => b.score - a.score);
     
-    // Filter to only include repos owned by the user (not org repos)
-    // This prevents showing repos like OWASP/mastg where user has access but isn't owner
     const ownedRepoScores = repoScores.filter(r => 
       r.repo.owner?.login?.toLowerCase() === username.toLowerCase()
     );
     
-    const topCandidates = ownedRepoScores.slice(0, 5);
+    const year2025 = new Date('2025-01-01');
+    const repos2025 = ownedRepoScores.filter(r => 
+      new Date(r.repo.pushed_at) >= year2025
+    );
     
-    // Check ALL candidates for 2025 commits, then pick highest-starred among those
-    // This combines 2025 activity requirement with star-based ranking
+    repos2025.sort((a, b) => 
+      (b.repo.stargazers_count || 0) - (a.repo.stargazers_count || 0)
+    );
+    
+    const candidateSource = repos2025.length > 0 ? repos2025 : ownedRepoScores;
+    const topCandidates = candidateSource.slice(0, 5);
+    
     const candidatesWithCommits: { repo: any; score: number }[] = [];
     
     for (const candidate of topCandidates) {
@@ -354,20 +315,15 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       }
     }
     
-    // Pick highest-starred repo among those with 2025 commits
     let bestRepo: any = null;
     if (candidatesWithCommits.length > 0) {
-      // Sort by stars (highest first) among repos with 2025 commits
       candidatesWithCommits.sort((a, b) => 
         (b.repo.stargazers_count || 0) - (a.repo.stargazers_count || 0)
       );
       bestRepo = candidatesWithCommits[0].repo;
     }
     
-    // Fallback: if no repo with push activity, prefer repos owned by the user
-    // This prevents org repos (like OWASP/mastg) from being selected when user has no commits
     if (!bestRepo && topCandidates.length > 0) {
-      // First try to find a repo owned by the user
       const ownedRepo = topCandidates.find(c => 
         c.repo.owner?.login?.toLowerCase() === username.toLowerCase()
       );
@@ -375,40 +331,32 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       if (ownedRepo) {
         bestRepo = ownedRepo.repo;
       } else {
-        // Last resort: use highest scored (even if org repo)
         bestRepo = topCandidates[0].repo;
       }
     }
 
-    // Calculate language scores using modular function
-    const langScoreMap = calculateLanguageScores(repos);
+    const ownedRepos = repos.filter((r: any) => 
+      r.owner?.login?.toLowerCase() === username.toLowerCase()
+    );
+    const langScoreMap = calculateLanguageScores(ownedRepos);
     const topLangScores = getTopLanguages(langScoreMap, 3);
     
-    // Calculate the weight of just the top languages (for normalization to 100%)
-    // We normalize among displayed languages so they sum to 100%
     const topLangWeight = topLangScores.reduce((sum, l) => sum + l.weight, 0);
 
-    // Map top languages with percentages that sum to 100%
-    // We normalize among the displayed languages so the chart makes visual sense
     const topLanguages: Language[] = topLangScores.map(lang => {
-        // Normalize so top 3 sum to 100% (better visual representation)
-        // This shows relative dominance among your main languages
         const normalizedPercentage = topLangWeight > 0 ? (lang.weight / topLangWeight) * 100 : 0;
         
         return {
             name: lang.name,
             count: lang.repoCount,
-            // Use normalized percentage so displayed languages add to 100%
             percentage: Math.round(normalizedPercentage),
             color: langColors[lang.name] || "#A3A3A3"
         };
     });
     
-    // Fix rounding errors: ensure percentages sum to exactly 100%
     if (topLanguages.length > 0) {
         const sum = topLanguages.reduce((s, l) => s + l.percentage, 0);
         if (sum !== 100 && sum > 0) {
-            // Add the difference to the largest language
             topLanguages[0].percentage += (100 - sum);
         }
     }
@@ -433,10 +381,8 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       url: ""
     };
 
-    // Build top 5 repos array with bestRepo first (so trophy appears on verified best)
     const topRepos: Repository[] = [];
     
-    // Add bestRepo first (the verified top project)
     if (bestRepo) {
       topRepos.push({
         name: bestRepo.name,
@@ -448,11 +394,10 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       });
     }
     
-    // Add remaining candidates (skip bestRepo to avoid duplicates)
     for (const c of topCandidates) {
       if (topRepos.length >= 5) break;
       if (bestRepo && c.repo.name === bestRepo.name && c.repo.owner?.login === bestRepo.owner?.login) {
-        continue; // Skip bestRepo as it's already first
+        continue; 
       }
       topRepos.push({
         name: c.repo.name,
@@ -464,10 +409,8 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       });
     }
 
-    // D. Productivity
     const productivity = calculateProductivity(hourCounts);
 
-    // E. Community Stats
     const communityStats: CommunityStats = {
         followers: user.followers,
         following: user.following,
@@ -475,7 +418,6 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
         totalStars: totalStars
     };
 
-    // F. Final Archetype
     const archetype = calculateArchetype(contributionBreakdown, communityStats, totalCommits, productivity, weekdayStats);
 
     return {

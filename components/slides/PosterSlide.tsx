@@ -9,7 +9,6 @@ import { Download, Check, Loader2, AlertTriangle, Share2, X } from 'lucide-react
 import { toPng } from 'html-to-image';
 import { useTheme } from '@/context/ThemeContext';
 
-// Social share icons
 const TwitterIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
@@ -198,14 +197,12 @@ export const PosterSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
           </div>
         </motion.div>
 
-        {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 2 }}
           className="mt-8 flex items-center gap-3"
         >
-          {/* Save Button */}
           <button
             className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all active:scale-95 ${
               hasDownloaded 
@@ -241,7 +238,6 @@ export const PosterSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
             )}
           </button>
 
-          {/* Share Button with Dropdown */}
           <div className="relative">
             <button
               className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all active:scale-95 ${isDark ? 'bg-white/10 text-white border border-white/20 hover:bg-white/20' : 'bg-black/10 text-black border border-black/20 hover:bg-black/20'}`}
@@ -252,7 +248,6 @@ export const PosterSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
               Share
             </button>
 
-            {/* Share Dropdown Menu */}
             <AnimatePresence>
               {showShareMenu && (
                 <motion.div
@@ -301,7 +296,6 @@ export const PosterSlide: React.FC<{ data: GitStoryData }> = ({ data }) => {
           </div>
         </motion.div>
 
-        {/* Copied Toast */}
         <AnimatePresence>
           {copied && (
             <motion.div

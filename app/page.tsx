@@ -181,7 +181,6 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Background Elements */}
       <div className={`absolute top-[-20%] left-[-20%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none ${isDark ? 'bg-hero-blue/20' : 'bg-hero-blue/10'}`} />
       <div className={`absolute bottom-[-20%] right-[-20%] w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none ${isDark ? 'bg-hero-purple/20' : 'bg-hero-purple/10'}`} />
 
@@ -280,7 +279,6 @@ export default function Home() {
                               : 'border-neutral-200 focus:border-hero-blue focus:ring-1 focus:ring-hero-blue'
                         }`}
                       />
-                      {/* Token status indicator */}
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         {tokenStatus === 'validating' && (
                           <Loader2 size={16} className="animate-spin text-neutral-400" />
@@ -365,7 +363,6 @@ export default function Home() {
             )}
           </button>
 
-          {/* Enhanced Error Display */}
           <AnimatePresence>
             {errorDetails && (
               <motion.div 
