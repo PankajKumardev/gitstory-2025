@@ -284,30 +284,30 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     
     const year2025 = new Date('2025-01-01');
     const repos2025 = ownedRepoScores.filter(r => 
-      new Date(r.repo.pushed_at) >= year2025
+      new Date(r.repo.pushed_at) >= year2025 && !r.repo.archived && !r.repo.fork
     );
     
     repos2025.sort((a, b) => 
       (b.repo.stargazers_count || 0) - (a.repo.stargazers_count || 0)
     );
     
-    const candidateSource = repos2025.length > 0 ? repos2025 : ownedRepoScores;
+    const candidateSource = repos2025.length > 0 ? repos2025 : ownedRepoScores.filter(r => !r.repo.archived);
     const topCandidates = candidateSource.slice(0, 5);
     
-    const candidatesWithCommits: { repo: any; score: number }[] = [];
+    const candidatesWithCommits: { repo: any; score: number; commitCount: number }[] = [];
     
     for (const candidate of topCandidates) {
       try {
         const repoOwner = candidate.repo.owner?.login || username;
         const commitsRes = await fetch(
-          makeGitHubUrl(`/repos/${repoOwner}/${candidate.repo.name}/commits?author=${username}&since=2025-01-01T00:00:00Z&per_page=1`),
+          makeGitHubUrl(`/repos/${repoOwner}/${candidate.repo.name}/commits?author=${username}&since=2025-01-01T00:00:00Z&per_page=100`),
           { headers }
         );
         
         if (commitsRes.ok) {
           const commits = await commitsRes.json();
           if (Array.isArray(commits) && commits.length > 0) {
-            candidatesWithCommits.push(candidate);
+            candidatesWithCommits.push({ ...candidate, commitCount: commits.length });
           }
         }
       } catch (e) {
@@ -317,13 +317,16 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
     
     let bestRepo: any = null;
     if (candidatesWithCommits.length > 0) {
-      candidatesWithCommits.sort((a, b) => 
-        (b.repo.stargazers_count || 0) - (a.repo.stargazers_count || 0)
-      );
+      candidatesWithCommits.sort((a, b) => {
+        const scoreA = (a.commitCount * 3) + ((a.repo.stargazers_count || 0) * 2) + ((a.repo.forks_count || 0) * 2);
+        const scoreB = (b.commitCount * 3) + ((b.repo.stargazers_count || 0) * 2) + ((b.repo.forks_count || 0) * 2);
+        return scoreB - scoreA;
+      });
       bestRepo = candidatesWithCommits[0].repo;
     }
     
     if (!bestRepo && topCandidates.length > 0) {
+      
       const ownedRepo = topCandidates.find(c => 
         c.repo.owner?.login?.toLowerCase() === username.toLowerCase()
       );
@@ -394,11 +397,24 @@ export const fetchUserStory = async (username: string, token?: string): Promise<
       });
     }
     
-    for (const c of topCandidates) {
+    for (const c of candidatesWithCommits) {
       if (topRepos.length >= 5) break;
       if (bestRepo && c.repo.name === bestRepo.name && c.repo.owner?.login === bestRepo.owner?.login) {
         continue; 
       }
+      topRepos.push({
+        name: c.repo.name,
+        description: c.repo.description || "No description provided.",
+        stars: c.repo.stargazers_count,
+        language: c.repo.language || "Unknown",
+        topics: c.repo.topics || [],
+        url: c.repo.html_url
+      });
+    }
+    
+    for (const c of topCandidates) {
+      if (topRepos.length >= 5) break;
+      if (topRepos.some(r => r.name === c.repo.name)) continue;
       topRepos.push({
         name: c.repo.name,
         description: c.repo.description || "No description provided.",
