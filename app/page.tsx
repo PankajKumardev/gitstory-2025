@@ -172,6 +172,14 @@ export default function Home() {
           <Github size={14} />
           <span>{starCount !== null ? starCount : '⭐'}</span>
         </a>
+        <a
+          href="https://twitter.com/pankajkumar_dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${isDark ? 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:bg-neutral-800' : 'bg-neutral-100 text-neutral-700 border-neutral-200 hover:bg-neutral-200'}`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
         <button
           onClick={toggleTheme}
           className={`p-1.5 rounded-lg transition-all border ${isDark ? 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:bg-neutral-800' : 'bg-neutral-100 text-neutral-700 border-neutral-200 hover:bg-neutral-200'}`}
